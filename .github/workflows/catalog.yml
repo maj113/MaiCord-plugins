@@ -1,0 +1,110 @@
+name: Publish the catalog
+
+# Renders index/source.json into the signed format-1 index MaiCord reads,
+# verifies it against the public key compiled into MaiCord, and deploys
+#   https://maj113.github.io/MaiCord-plugins/v1/index.json
+#   https://maj113.github.io/MaiCord-plugins/v1/index.json.sig
+# to GitHub Pages. Each index is valid for 30 days (the client accepts at most
+# 35), so the weekly run re-signs it long before it expires. The reference
+# tooling (tools/release/plugin_index.py, cng_p256.py) comes from MaiCord's
+# master branch; cng_p256 uses Windows CNG, hence the Windows runner.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "37 4 * * 1"
+
+permissions: {}
+
+concurrency:
+  group: catalog
+  cancel-in-progress: false
+
+jobs:
+  sign:
+    name: Render and sign
+    runs-on: windows-latest
+    timeout-minutes: 15
+    environment: catalog
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: catalog
+          persist-credentials: false
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: maj113/MaiCord
+          ref: master
+          path: maicord
+          sparse-checkout: tools/release
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Render and sign
+        shell: powershell
+        env:
+          MAICORD_PLUGIN_CATALOG_SIGNING_KEY: ${{ secrets.MAICORD_PLUGIN_CATALOG_SIGNING_KEY }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -B catalog/scripts/publish_index.py --tools maicord/tools/release catalog/index/source.json site/v1/index.json
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      # The key MaiCord builds compile in (MAICORD_PLUGIN_CATALOG_PUBLIC_KEY).
+      - name: Verify
+        shell: powershell
+        env:
+          PUBLIC_KEY: ${{ vars.MAICORD_PLUGIN_CATALOG_PUBLIC_KEY }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (!$env:PUBLIC_KEY) { throw 'Set the MAICORD_PLUGIN_CATALOG_PUBLIC_KEY repository variable.' }
+          python -B maicord/tools/release/plugin_index.py verify --kind official --public-key $env:PUBLIC_KEY site/v1/index.json
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+
+  deploy:
+    name: Deploy to Pages
+    needs: sign
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+  # GitHub disables scheduled workflows in a public repository after 60 days
+  # without a commit, which would let the index expire. A scheduled run lands
+  # an empty commit once main is 45 days old (pushes by this token start no
+  # workflow).
+  keepalive:
+    name: Keep the schedule enabled
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+      - name: Commit when main is idle
+        run: |
+          age=$(( $(date +%s) - $(git log -1 --format=%ct) ))
+          if [ "$age" -lt $((45 * 86400)) ]; then echo "main is $((age / 86400)) days old."; exit 0; fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit --allow-empty -m 'Keep the scheduled catalog refresh enabled'
+          git push origin HEAD:main
