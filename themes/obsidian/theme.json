@@ -1,0 +1,51 @@
+{
+  "version": "2.0",
+  "name": "Obsidian",
+  "base": "dark",
+  "colors": {
+    "base_lowest": "#000000",
+    "base_lower": "#060606",
+    "base_low": "#000000",
+    "surface": "#101011",
+    "surface_high": "#1b1b1d",
+    "interactive": "#2a2a2d",
+    "interactive_hover": "#3a3a3e",
+    "accent": "#34d399",
+    "text_primary": "#ececee",
+    "text_secondary": "#9d9da4",
+    "avatar_placeholder": "#3d3d42",
+    "notification": "#ff6b6b",
+    "syntax_keyword": "#c4a1ff",
+    "syntax_type": "#f2cc84",
+    "syntax_string": "#92d6a3",
+    "syntax_number": "#f0a778",
+    "syntax_comment": "#76767f",
+    "syntax_operator": "#b4b4bc",
+    "syntax_builtin": "#6bb8ff",
+    "syntax_preprocessor": "#52d6c4"
+  },
+  "semantic": {
+    "text": {
+      "link": "#4fe0aa",
+      "on_accent": "#03150d"
+    },
+    "border": {
+      "subtle": "#ffffff1a",
+      "strong": "#ffffff2e"
+    },
+    "state": {
+      "hover": "#ffffff14",
+      "pressed": "#ffffff21",
+      "row_hover": "#ffffff17",
+      "row_selected": "#ffffff29"
+    },
+    "mention": {
+      "text": "#6ee7b7",
+      "inline_background": "#34d3992e",
+      "background": "#34d3991a"
+    },
+    "emphasis": {
+      "selected": "#34d39926"
+    }
+  }
+}

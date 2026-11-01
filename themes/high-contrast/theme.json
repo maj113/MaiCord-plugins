@@ -1,0 +1,73 @@
+{
+  "version": "2.0",
+  "name": "High Contrast",
+  "base": "dark",
+  "colors": {
+    "base_lowest": "#000000",
+    "base_lower": "#0e0e0e",
+    "base_low": "#000000",
+    "surface": "#161616",
+    "surface_high": "#242424",
+    "interactive": "#383838",
+    "interactive_hover": "#4d4d4d",
+    "accent": "#ffd23f",
+    "text_primary": "#ffffff",
+    "text_secondary": "#e0e0e0",
+    "avatar_placeholder": "#595959",
+    "notification": "#ff9b9b",
+    "syntax_keyword": "#ff9cf0",
+    "syntax_type": "#ffe27a",
+    "syntax_string": "#9dff9d",
+    "syntax_number": "#ffb070",
+    "syntax_comment": "#b3b3b3",
+    "syntax_operator": "#ffffff",
+    "syntax_builtin": "#8fd0ff",
+    "syntax_preprocessor": "#6ff2ee"
+  },
+  "semantic": {
+    "text": {
+      "link": "#6fdcff",
+      "on_accent": "#000000",
+      "positive": "#7dffa5",
+      "warning": "#ffd23f"
+    },
+    "accent": {
+      "success": "#3ddc84",
+      "warning": "#ffd23f"
+    },
+    "border": {
+      "subtle": "#ffffff73",
+      "strong": "#ffffffbf",
+      "focus": "#ffffff"
+    },
+    "state": {
+      "hover": "#ffffff2e",
+      "pressed": "#ffffff47",
+      "row_hover": "#ffffff2e",
+      "row_selected": "#ffffff52"
+    },
+    "mention": {
+      "text": "#ffe27a",
+      "inline_background": "#ffd23f40",
+      "background": "#ffd23f2e"
+    },
+    "emphasis": {
+      "selected": "#ffd23f33",
+      "outline": "#ffffff"
+    },
+    "ansi": {
+      "bright_black": "#a6a6a6",
+      "blue": "#6aa9ff",
+      "red": "#ff7b7b",
+      "magenta": "#ff7ee0"
+    }
+  },
+  "components": {
+    "icons": {
+      "weight": 1.5
+    },
+    "settings": {
+      "focus_ring": "#ffffff"
+    }
+  }
+}

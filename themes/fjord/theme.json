@@ -1,0 +1,56 @@
+{
+  "version": "2.0",
+  "name": "Fjord",
+  "base": "dark",
+  "colors": {
+    "base_lowest": "#242933",
+    "base_lower": "#2a303b",
+    "base_low": "#2e3440",
+    "surface": "#363d4b",
+    "surface_high": "#3e4757",
+    "interactive": "#4c566a",
+    "interactive_hover": "#5b677e",
+    "accent": "#88c0d0",
+    "text_primary": "#e5e9f0",
+    "text_secondary": "#b3bdcf",
+    "avatar_placeholder": "#5a667b",
+    "notification": "#f6a3aa",
+    "syntax_keyword": "#81a1c1",
+    "syntax_type": "#8fbcbb",
+    "syntax_string": "#a3be8c",
+    "syntax_number": "#c79ec2",
+    "syntax_comment": "#7f8da6",
+    "syntax_operator": "#b8c2d4",
+    "syntax_builtin": "#88c0d0",
+    "syntax_preprocessor": "#dc9680"
+  },
+  "semantic": {
+    "text": {
+      "link": "#8fcbdc",
+      "on_accent": "#232830",
+      "positive": "#a3be8c"
+    },
+    "accent": {
+      "success": "#7cab6a",
+      "warning": "#ebcb8b"
+    },
+    "border": {
+      "subtle": "#d8dee91c",
+      "strong": "#d8dee930"
+    },
+    "state": {
+      "hover": "#d8dee917",
+      "pressed": "#d8dee926",
+      "row_hover": "#8e9bb21f",
+      "row_selected": "#8e9bb233"
+    },
+    "mention": {
+      "text": "#9fd0de",
+      "inline_background": "#88c0d033",
+      "background": "#88c0d01f"
+    },
+    "emphasis": {
+      "selected": "#88c0d02b"
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "version": "2.0",
+  "name": "Deep Ocean",
+  "base": "dark",
+  "colors": {
+    "base_lowest": "#050d16",
+    "base_lower": "#08131f",
+    "base_low": "#0b1a29",
+    "surface": "#10253a",
+    "surface_high": "#163149",
+    "interactive": "#1f4260",
+    "interactive_hover": "#29557a",
+    "accent": "#22b8cf",
+    "text_primary": "#e4f1f8",
+    "text_secondary": "#95b2c6",
+    "avatar_placeholder": "#2a5273",
+    "notification": "#ff7686",
+    "syntax_keyword": "#b69cf5",
+    "syntax_type": "#f0c674",
+    "syntax_string": "#8bd49c",
+    "syntax_number": "#f4a261",
+    "syntax_comment": "#6384a0",
+    "syntax_operator": "#9fc0d4",
+    "syntax_builtin": "#64b9ff",
+    "syntax_preprocessor": "#4fd1c5"
+  },
+  "semantic": {
+    "text": {
+      "link": "#5fd3e6",
+      "on_accent": "#031018"
+    },
+    "border": {
+      "subtle": "#8fd8ff1f",
+      "strong": "#8fd8ff33"
+    },
+    "state": {
+      "hover": "#8fd8ff1a",
+      "pressed": "#8fd8ff29",
+      "row_hover": "#6fb7e01f",
+      "row_selected": "#6fb7e036"
+    },
+    "mention": {
+      "text": "#8fe3f2",
+      "inline_background": "#22b8cf33",
+      "background": "#22b8cf1f"
+    },
+    "emphasis": {
+      "selected": "#22b8cf2e"
+    }
+  }
+}

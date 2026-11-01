@@ -1,0 +1,57 @@
+{
+  "version": "2.0",
+  "name": "Warm Paper",
+  "base": "light",
+  "colors": {
+    "base_lowest": "#e6dcc8",
+    "base_lower": "#efe6d3",
+    "base_low": "#f7f0e1",
+    "surface": "#fdf8ec",
+    "surface_high": "#efe5d0",
+    "interactive": "#dfd2b8",
+    "interactive_hover": "#cdbd9c",
+    "accent": "#b04a24",
+    "text_primary": "#2b2118",
+    "text_secondary": "#62523d",
+    "avatar_placeholder": "#b9a984",
+    "notification": "#b3261e",
+    "syntax_keyword": "#7b2f8f",
+    "syntax_type": "#7a5000",
+    "syntax_string": "#2f6a2a",
+    "syntax_number": "#9a4a1c",
+    "syntax_comment": "#74664f",
+    "syntax_operator": "#58493a",
+    "syntax_builtin": "#235c9c",
+    "syntax_preprocessor": "#1d6b6b"
+  },
+  "semantic": {
+    "text": {
+      "link": "#9a3e1a",
+      "on_accent": "#fffaf0",
+      "positive": "#2c6a35",
+      "warning": "#7d5300"
+    },
+    "accent": {
+      "success": "#2b8a4f",
+      "warning": "#b87400"
+    },
+    "border": {
+      "subtle": "#5a3c1e24",
+      "strong": "#5a3c1e3d"
+    },
+    "state": {
+      "hover": "#5a3c1e14",
+      "pressed": "#5a3c1e24",
+      "row_hover": "#7a5a3224",
+      "row_selected": "#7a5a3238"
+    },
+    "mention": {
+      "text": "#8f3a18",
+      "inline_background": "#b04a2429",
+      "background": "#b04a2417"
+    },
+    "emphasis": {
+      "selected": "#b04a2424"
+    }
+  }
+}
