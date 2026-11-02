@@ -1,0 +1,15 @@
+{
+  "name": "Text Replace",
+  "summary": "Rewrites what you send with your own find-and-replace rules.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "chat",
+    "utility"
+  ],
+  "owner_id": "0x6D63747874726570"
+}
