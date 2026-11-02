@@ -59,6 +59,9 @@ PLUGIN_LINK = ["/nologo", "/DLL", "/NOENTRY", "/NODEFAULTLIB", "/SUBSYSTEM:WINDO
 THEME_VERSION = "2.0"
 # Permissions the official catalog refuses (README, "Discord's Terms of Service"): such a plugin can only be sideloaded.
 REFUSED_PERMISSIONS = ("automated_actions", "persistent_log")
+# Slugs the website keeps for its own pages: maicord.com/plugins/develop/ is the developer guide, so no item of any
+# kind may be named "develop" (MaiCord-Site's catalog_pages.py RESERVED_SLUGS; keep the two in step).
+RESERVED_SLUGS = ("develop",)
 
 
 class BuildError(Exception):
@@ -155,7 +158,14 @@ def load_json(path: Path) -> dict:
         raise BuildError(f"{path}: {error}") from error
 
 
+def check_slug(kind: str, slug: str) -> None:
+    if slug in RESERVED_SLUGS:
+        raise BuildError(f"{kind} {slug}: \"{slug}\" is reserved for the website (maicord.com/{DIRECTORIES[kind]}/{slug}/ "
+                         f"is not an item page); rename the folder. Reserved: {', '.join(RESERVED_SLUGS)}")
+
+
 def item_metadata(kind: str, slug: str, directory: Path) -> dict:
+    check_slug(kind, slug)
     meta = load_json(directory / "catalog.json")
     unknown = set(meta) - SHARED_KEYS - EXTRA_KEYS[kind]
     if unknown:

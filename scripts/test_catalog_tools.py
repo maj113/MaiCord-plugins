@@ -138,6 +138,14 @@ class PolicyTests(unittest.TestCase):
             with self.assertRaisesRegex(build_catalog.BuildError, permission):
                 build_catalog.refuse_policy_permissions("bad", ["clipboard", permission])
 
+    def test_slugs_the_website_reserves_are_refused(self):
+        for kind in build_catalog.DIRECTORIES:
+            with self.assertRaisesRegex(build_catalog.BuildError, "reserved for the website"):
+                build_catalog.item_metadata(kind, "develop", ROOT / "plugins" / "develop")
+            build_catalog.check_slug(kind, "developer")
+        for kind, folder in build_catalog.DIRECTORIES.items():
+            self.assertFalse(any(p.name in build_catalog.RESERVED_SLUGS for p in (ROOT / folder).iterdir()))
+
 
 class PngEncoderTests(unittest.TestCase):
     def _check(self, image):

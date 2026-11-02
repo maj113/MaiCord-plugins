@@ -168,7 +168,9 @@ Byte limits count UTF-8 bytes.
 
 The folder name is the slug: lower-case letters, digits and `-`, starting
 with a letter or digit, at most 40 characters. A slug is the item's identity
-for its whole life, per kind; never rename it.
+for its whole life, per kind; never rename it. `develop` is reserved for any
+kind, because maicord.com/plugins/develop/ and /effects/develop/ are the
+developer guides, and the build refuses a folder with that name.
 
 Everything else is taken from the item itself, so the index can't disagree
 with the binary:
