@@ -1,0 +1,15 @@
+{
+  "name": "No Reply Mention",
+  "summary": "Turns off the ping of your replies.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "chat",
+    "notifications"
+  ],
+  "owner_id": "0x6D636E6F7265706C"
+}
