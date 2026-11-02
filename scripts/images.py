@@ -7,10 +7,12 @@ until it fits (noise-heavy effects such as film grain compress badly).
 from __future__ import annotations
 
 import io
+import struct
 import subprocess
+import zlib
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageChops
 
 import effects
 
@@ -70,10 +72,55 @@ class Renderer:
         return min(float(self._run(arguments)) for _ in range(BENCH_REPEATS))
 
 
+def _chunk(tag: bytes, data: bytes) -> bytes:
+    return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data))
+
+
+def _shifted(image: Image.Image, dx: int, dy: int) -> Image.Image:
+    """The image moved by (dx, dy) with zeros shifted in: the left or upper neighbour a PNG filter subtracts."""
+    moved = Image.new(image.mode, image.size, 0)
+    moved.paste(image.crop((0, 0, image.width - dx, image.height - dy)), (dx, dy))
+    return moved
+
+
+def _filtered_png(image: Image.Image, palette: bytes | None) -> list:
+    """One PNG per whole-image filter (none, sub, up): the filter is chosen for the whole picture, because soft
+    gradients (sub) and film grain (none) want different ones and a per-row guess picks badly for both."""
+    width, height = image.size
+    plane = Image.frombytes("L", image.size, image.tobytes()) if palette else image  # palette indices are bytes, not colours
+    stride = width * len(plane.getbands())
+    header = _chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 3 if palette else 2, 0, 0, 0))
+    header += _chunk(b"PLTE", palette) if palette else b""
+    candidates = []
+    for kind, source in ((0, plane), (1, ImageChops.subtract_modulo(plane, _shifted(plane, 1, 0))),
+                         (2, ImageChops.subtract_modulo(plane, _shifted(plane, 0, 1)))):
+        raw = source.tobytes()
+        scanlines = b"".join(bytes((kind,)) + raw[row * stride:(row + 1) * stride] for row in range(height))
+        candidates.append(b"\x89PNG\r\n\x1a\n" + header + _chunk(b"IDAT", zlib.compress(scanlines, 9)) + _chunk(b"IEND", b""))
+    return candidates
+
+
 def png_bytes(image: Image.Image) -> bytes:
+    """The smallest lossless PNG of an RGB image found among Pillow's optimized encoding, the three whole-image
+    filters, and (when it has at most 256 colours) the same on an exact palette image. Every candidate decodes to
+    the same pixels, so the choice only changes the size."""
     stream = io.BytesIO()
     image.save(stream, "PNG", optimize=True)
-    return stream.getvalue()
+    candidates = [stream.getvalue()] + _filtered_png(image, None)
+    colors = image.getcolors(256)
+    if colors:
+        palette = b"".join(bytes(color) for _, color in colors)
+        order = {bytes(color): index for index, (_, color) in enumerate(colors)}
+        raw = image.tobytes()
+        indexed = Image.frombytes("P", image.size, bytes(order[raw[i:i + 3]] for i in range(0, len(raw), 3)))
+        indexed.putpalette(palette)
+        stream = io.BytesIO()
+        indexed.save(stream, "PNG", optimize=True)
+        candidates += [stream.getvalue()] + _filtered_png(indexed, palette)
+    best = min(candidates, key=len)
+    if Image.open(io.BytesIO(best)).convert("RGB").tobytes() != image.tobytes():
+        raise effects.EffectError("the re-encoded preview differs from the rendered frame")
+    return best
 
 
 def apng_bytes(frames: list, fps: int) -> bytes:
