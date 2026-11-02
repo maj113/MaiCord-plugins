@@ -240,10 +240,11 @@ def build_plugin(tools: Toolchain, slug: str, directory: Path, work: Path) -> Pa
 
 
 def source_changed(commit: str | None, directory: Path) -> bool | None:
-    """Whether the directory differs from the commit a published version was built from; None when unknown."""
+    """Whether the plugin source differs from the commit a published version was built from; None when unknown."""
     if not commit or git("cat-file", "-e", commit + "^{commit}") is None:
         return None
-    return subprocess.run(["git", "-C", str(ROOT), "diff", "--quiet", commit, "HEAD", "--", str(directory)]).returncode != 0
+    return subprocess.run(["git", "-C", str(ROOT), "diff", "--quiet", commit, "HEAD", "--", str(directory / "plugin.cpp")],
+                          stdout=subprocess.DEVNULL).returncode != 0
 
 
 def plugin_item(site: Site, tools: Toolchain, slug: str, directory: Path, meta: dict, ctx: dict, previous: dict | None,
