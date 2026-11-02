@@ -1,0 +1,15 @@
+{
+  "name": "Preview Message",
+  "summary": "Shows what you've typed as a message only you see.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "chat",
+    "utility"
+  ],
+  "owner_id": "0x6D63707265766D67"
+}
