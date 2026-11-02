@@ -1,0 +1,15 @@
+{
+  "name": "Message Logger",
+  "summary": "Keeps deleted and edited messages visible until you close MaiCord.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "chat",
+    "utility"
+  ],
+  "owner_id": "0x6D636D73676C6F67"
+}
