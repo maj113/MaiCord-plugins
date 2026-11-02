@@ -123,9 +123,11 @@ Plugins that may break Discord's Terms of Service are not accepted:
   to disk (the `persistent_log` permission). Keeping them visible until MaiCord
   closes (`message_history`) is allowed.
 
-Also refused: no telemetry, no hidden network use, no obfuscated code.
-Everything else is reviewed on its merits. Anything this policy refuses can
-still be sideloaded in Developer Mode, at the user's own risk.
+The build enforces the two permissions: a plugin that declares
+`automated_actions` or `persistent_log` fails CI. The rest is judged in
+review: no telemetry, no hidden network use, no obfuscated code, and anything
+else that could put the user's account at risk. Anything this policy refuses
+can still be sideloaded in Developer Mode, at the user's own risk.
 
 ### Licenses and credit
 

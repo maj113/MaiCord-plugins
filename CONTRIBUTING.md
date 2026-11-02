@@ -50,7 +50,8 @@ Before you start:
 
    `pack` re-checks the DLL and writes `dist\my-plugin\` with `plugin.cpp`,
    `catalog.json` and `details.md`. It refuses `automated_actions` and
-   `persistent_log`, which the catalog doesn't accept. Categories are up to
+   `persistent_log`, and so does the CI build (it fails with a message naming
+   the permission): the catalog doesn't accept them. Categories are up to
    three of `chat`, `appearance`, `notifications`, `privacy`, `utility`,
    `voice`, `accessibility`, `moderation`, `developer`, `fun`.
 7. **Open the pull request.** Fork this repository, copy `dist\my-plugin\` to
@@ -262,7 +263,9 @@ effect is shown the same way:
   their defaults, over MaiCord's default dark theme, on **WARP**, the in-box
   software rasterizer (CI has no GPU).
 - The **still** is the frame at 2 seconds, 960x540, shrunk (800x450, 640x360,
-  480x270) until it fits 256 KiB.
+  480x270) until it fits 256 KiB. It is stored as the smallest lossless PNG
+  CI finds (the best of a few filters, and a palette when the picture has at
+  most 256 colours), so most effects sit well under the limit.
 - The **loop** is an animated PNG that starts at 2 seconds: 480x270 at
   15 fps for 3 seconds, stepping down (to 160x90 at 8 fps for 2 seconds) until it fits 2 MiB.
 - The **cost class** is the time to render 300 frames at 960x540 (best of
@@ -287,8 +290,7 @@ report** to the run's summary (the pull request's **Checks** tab, then the
 changes it lists, against the published version:
 
 - **plugins:** the version, the DLL size and how it changed, the API level, the
-  permissions and the network hosts, with what was **added** or removed, and
-  a bold line for a permission the catalog refuses;
+  permissions and the network hosts, with what was **added** or removed;
 - **themes:** the version, the base, the effect, the swatches and the preview;
 - **effects:** the cost class (and whether it got slower), the blend, the
   inputs, the knob counts, the file size, the preview and the loop.

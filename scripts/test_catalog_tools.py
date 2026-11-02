@@ -10,17 +10,21 @@ folder has the files the build reads, and the pull request review report.
 
 from __future__ import annotations
 
+import io
 import json
 import struct
 import sys
 import unittest
 from pathlib import Path
 
+from PIL import Image
+
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 import build_catalog  # noqa: E402
 import effects  # noqa: E402
+import images  # noqa: E402
 import review_report  # noqa: E402
 
 
@@ -127,6 +131,44 @@ class DetailsAndThemeTests(unittest.TestCase):
             build_catalog.theme_color(document, "red")
 
 
+class PolicyTests(unittest.TestCase):
+    def test_refused_permissions_fail_the_build(self):
+        build_catalog.refuse_policy_permissions("ok", ["read_messages", "network", "message_history"])
+        for permission in ("automated_actions", "persistent_log"):
+            with self.assertRaisesRegex(build_catalog.BuildError, permission):
+                build_catalog.refuse_policy_permissions("bad", ["clipboard", permission])
+
+
+class PngEncoderTests(unittest.TestCase):
+    def _check(self, image):
+        data = images.png_bytes(image)
+        decoded = Image.open(io.BytesIO(data))
+        decoded.load()
+        self.assertEqual(decoded.convert("RGB").tobytes(), image.tobytes())
+        plain = io.BytesIO()
+        image.save(plain, "PNG", optimize=True)
+        self.assertLessEqual(len(data), len(plain.getvalue()))
+        return data
+
+    def test_gradient_noise_and_flat_pictures_round_trip_and_never_grow(self):
+        width, height = 96, 64
+        gradient = Image.new("RGB", (width, height))
+        gradient.putdata([((x * 2 + y) % 256, (x + y * 3) % 256, (x * y) % 256) for y in range(height) for x in range(width)])
+        seed, grain = 12345, []
+        for _ in range(width * height):
+            seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF
+            grain.append((seed >> 16) % 4 * 60)
+        noise = Image.new("RGB", (width, height))
+        noise.putdata([(v, v // 2, 255 - v) for v in grain])
+        for image in (gradient, noise, Image.new("RGB", (width, height), (9, 8, 7)), Image.new("RGB", (1, 1), (1, 2, 3))):
+            self._check(image)
+
+    def test_few_colours_use_a_palette(self):
+        image = Image.new("RGB", (64, 48))
+        image.putdata([((x // 8 + y // 8) % 5 * 50, 20, 30) for y in range(48) for x in range(64)])
+        self.assertEqual(Image.open(io.BytesIO(self._check(image))).mode, "P")
+
+
 def plugin_record(version, permissions, network, size=1000, sha="a" * 64):
     return {"kind": "plugin", "slug": "demo", "name": "Demo | **x**", "summary": "[evil](https://example.com)", "authors": [{"name": "Ada", "github": "ada"}],
             "license": "MIT", "categories": ["utility"],
@@ -148,7 +190,6 @@ class ReviewReportTests(unittest.TestCase):
         self.assertIn("**added:** `clipboard`, `persistent_log`", report)
         self.assertIn("**added:** `b.example.com`", report)
         self.assertIn("+300 bytes against the published 1,000", report)
-        self.assertIn("Refused by the catalog policy:** `persistent_log`", report)
 
     def test_new_item_and_unreadable_index(self):
         item = plugin_record("1.0.0", [], [])

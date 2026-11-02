@@ -11,7 +11,7 @@ for pull requests from forks, which get no secrets and no write token.
 
 For every item whose folder the pull request touches it lists:
   plugins   the version against the published one, the DLL size, the API level, the permissions and the network hosts,
-            with what was added and removed, and a flag for anything the catalog policy refuses;
+            with what was added and removed;
   themes    the version, the base, the effect it names, the swatches, the file size and the preview;
   effects   the version, the cost class against the published one, the blend, the inputs, the knobs, the file size, the
             preview and the loop.
@@ -38,11 +38,6 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 DIRECTORIES = {"plugins": "plugin", "themes": "theme", "effects": "effect"}
 KIND_TITLES = {"plugin": "Plugin", "theme": "Theme", "effect": "Effect"}
-# Permissions the official catalog refuses (CONTRIBUTING.md, "What the catalog refuses").
-REFUSED_PERMISSIONS = {
-    "automated_actions": "acts for the user without a gesture (self-bot behavior)",
-    "persistent_log": "saves deleted or edited messages to disk",
-}
 COST_ORDER = {"light": 0, "medium": 1, "heavy": 2}
 
 
@@ -145,9 +140,6 @@ def item_lines(item: dict, old: dict | None, compared: bool) -> list:
                      if previous and previous["api_level"] != new["api_level"] else ""))
         lines.append("- Permissions: " + compare(new["permissions"], previous["permissions"] if previous else None))
         lines.append("- Network hosts: " + compare(new["network"], previous.get("network", []) if previous else None))
-        refused = [p for p in new["permissions"] if p in REFUSED_PERMISSIONS]
-        for permission in refused:
-            lines.append(f"- **Refused by the catalog policy:** `{permission}` {REFUSED_PERMISSIONS[permission]}.")
         if new["network"]:
             lines.append("- Check that each host is used for what `details.md` says, and that nothing is sent before the user acts.")
         if "changelog" in new:

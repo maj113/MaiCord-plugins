@@ -57,6 +57,8 @@ PLUGIN_LINK = ["/nologo", "/DLL", "/NOENTRY", "/NODEFAULTLIB", "/SUBSYSTEM:WINDO
                "/HIGHENTROPYVA", "/NXCOMPAT", "/CETCOMPAT", "/OPT:REF", "/OPT:ICF=8", "/INCREMENTAL:NO", "/ALLOWBIND:NO",
                "/MERGE:.pdata=.rdata", "/DEBUG:NONE", "/Brepro", "/mllvm:-enable-machine-outliner"]
 THEME_VERSION = "2.0"
+# Permissions the official catalog refuses (README, "Discord's Terms of Service"): such a plugin can only be sideloaded.
+REFUSED_PERMISSIONS = ("automated_actions", "persistent_log")
 
 
 class BuildError(Exception):
@@ -239,6 +241,14 @@ def build_plugin(tools: Toolchain, slug: str, directory: Path, work: Path) -> Pa
     return dll
 
 
+def refuse_policy_permissions(slug: str, permissions: list) -> None:
+    """The catalog does not list a plugin that acts for the account on its own or saves messages to disk."""
+    refused = [p for p in permissions if p in REFUSED_PERMISSIONS]
+    if refused:
+        raise BuildError(f"plugin {slug}: the official catalog refuses {', '.join(refused)} (it could break Discord's "
+                         "Terms of Service); such a plugin can only be sideloaded in Developer Mode")
+
+
 def source_changed(commit: str | None, directory: Path) -> bool | None:
     """Whether the plugin source differs from the commit a published version was built from; None when unknown."""
     if not commit or git("cat-file", "-e", commit + "^{commit}") is None:
@@ -256,6 +266,7 @@ def plugin_item(site: Site, tools: Toolchain, slug: str, directory: Path, meta: 
         descriptor = pe_descriptor.read_descriptor(dll)
     except pe_descriptor.DescriptorError as error:
         raise BuildError(f"plugin {slug}: {error}") from error
+    refuse_policy_permissions(slug, descriptor.permissions)
     if descriptor.name != meta["name"]:
         raise BuildError(f"plugin {slug}: catalog.json names it {meta['name']!r}, the descriptor {descriptor.name!r}")
     if f"0x{descriptor.owner_id:016X}" != meta.get("owner_id", "").upper().replace("0X", "0x"):
