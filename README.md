@@ -136,6 +136,10 @@ redistribution and modification (CC BY-NC-SA counts); no license means no
 listing. Credit is shown to users: `authors` for the people who wrote it and
 `derived_from` (URL, author, license) for what it was ported or adapted from.
 
+The repository's own scripts, workflows and documentation are licensed under
+the [Mozilla Public License 2.0](LICENSE). Catalog items keep their own
+licenses, as stated in each item's `catalog.json`.
+
 ### Takedowns
 
 A listed item can be revoked: add its file's SHA-256 to
