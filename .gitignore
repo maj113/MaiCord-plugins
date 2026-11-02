@@ -1,4 +1,4 @@
-# Private keys never belong in this repository.
 *.jwk
 /site/
+/build/
 __pycache__/
