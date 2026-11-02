@@ -12,6 +12,10 @@ name: Publish the catalog
 # repository, packs themes and effects (fxc, then previews and cost on WARP, the
 # in-box software rasterizer) and checks the result. Only the sign job, on
 # pushes to main, the weekly schedule and manual runs, holds the signing key.
+# On pull requests it also writes a review report to the run's summary
+# (scripts/review_report.py): the permissions and hosts each changed item
+# declares against the published version, the DLL size, the effect cost class
+# and the previews, which it uploads as an artifact.
 # Each index is valid for 30 days (the client accepts at most 35), so the weekly
 # run re-signs it long before it expires. MaiCord's tools/release
 # (plugin_index.py, the client's strict schema, and cng_p256.py, which signs
@@ -92,6 +96,51 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           python -B catalog/scripts/check_site.py --tools maicord/tools/release --source build/index-source.json site
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      # Pull requests only: what each changed item declares, set against the published catalog (permissions, network
+      # hosts, DLL size, effect cost class, previews), as the run's summary. A summary needs no token and no secret,
+      # so it works for pull requests from forks, which GitHub gives neither. Previews cannot be shown inside a
+      # summary, so they go in an artifact under readable names. An aid, never a gate: a failure here fails nothing.
+      - name: Write the review report
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        shell: bash
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          PUBLIC_KEY: ${{ vars.MAICORD_PLUGIN_CATALOG_PUBLIC_KEY }}
+          NEXT_PUBLIC_KEY: ${{ vars.MAICORD_PLUGIN_CATALOG_NEXT_PUBLIC_KEY }}
+        run: |
+          keys="$PUBLIC_KEY"
+          if [ -n "$NEXT_PUBLIC_KEY" ]; then keys="${keys:+$keys,}$NEXT_PUBLIC_KEY"; fi
+          verify=()
+          if [ -n "$keys" ]; then verify=(--public-key "$keys"); fi
+          python -B catalog/scripts/review_report.py --tools maicord/tools/release --source build/index-source.json \
+            --site site --previous "$PAGES_URL" --base "$BASE" --report build/review-report.md --previews review-previews "${verify[@]}"
+
+      - name: Upload the previews
+        id: previews
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: review-previews
+          path: review-previews
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Show the review report
+        if: github.event_name == 'pull_request' && !cancelled()
+        continue-on-error: true
+        shell: bash
+        env:
+          PREVIEWS_URL: ${{ steps.previews.outputs.artifact-url }}
+        run: |
+          if [ -f build/review-report.md ]; then
+            cat build/review-report.md >> "$GITHUB_STEP_SUMMARY"
+            if [ -n "$PREVIEWS_URL" ]; then
+              printf '\nPreview images of the changed items (stills, and loops as PNG animations): [review-previews artifact](%s)\n' "$PREVIEWS_URL" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

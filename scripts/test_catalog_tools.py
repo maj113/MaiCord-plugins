@@ -4,8 +4,8 @@
     python -B scripts/test_catalog_tools.py
 
 Covers what can be checked without compiling: the effect annotations and knob slots against every effect in the
-repository, the `.mcfx` container layout, the details Markdown subset, the theme colour reader, and that every
-item folder has the files the build reads.
+repository, the `.mcfx` container layout, the details Markdown subset, the theme colour reader, that every item
+folder has the files the build reads, and the pull request review report.
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 import build_catalog  # noqa: E402
 import effects  # noqa: E402
+import review_report  # noqa: E402
 
 
 def effect_folders():
@@ -124,6 +125,59 @@ class DetailsAndThemeTests(unittest.TestCase):
         self.assertEqual(build_catalog.theme_color(document, document["colors"]["b"]), "#aabbcc")
         with self.assertRaises(build_catalog.BuildError):
             build_catalog.theme_color(document, "red")
+
+
+def plugin_record(version, permissions, network, size=1000, sha="a" * 64):
+    return {"kind": "plugin", "slug": "demo", "name": "Demo | **x**", "summary": "[evil](https://example.com)", "authors": [{"name": "Ada", "github": "ada"}],
+            "license": "MIT", "categories": ["utility"],
+            "versions": [{"version": version, "released": 1, "api_level": 2, "permissions": permissions, "network": network,
+                          "file": {"sha256": sha, "bytes": size}}]}
+
+
+class ReviewReportTests(unittest.TestCase):
+    def test_touched_items(self):
+        paths = ["plugins/clear-urls/plugin.cpp", "plugins/clear-urls/details.md", "effects/aurora/aurora.hlsl", "themes/fjord/theme.json",
+                 "README.md", "scripts/build_catalog.py", "plugins/stray.txt"]
+        self.assertEqual(review_report.touched_items(paths), {("plugin", "clear-urls"), ("effect", "aurora"), ("theme", "fjord")})
+
+    def test_permission_and_host_diff(self):
+        old = plugin_record("1.0.0", ["read_messages", "network"], ["a.example.com"], 1000, "b" * 64)
+        new = plugin_record("1.1.0", ["read_messages", "network", "clipboard", "persistent_log"], ["a.example.com", "b.example.com"], 1300)
+        report = review_report.render({("plugin", "demo"): new}, {("plugin", "demo"): old}, {("plugin", "demo")})
+        self.assertIn("updated from 1.0.0", report)
+        self.assertIn("**added:** `clipboard`, `persistent_log`", report)
+        self.assertIn("**added:** `b.example.com`", report)
+        self.assertIn("+300 bytes against the published 1,000", report)
+        self.assertIn("Refused by the catalog policy:** `persistent_log`", report)
+
+    def test_new_item_and_unreadable_index(self):
+        item = plugin_record("1.0.0", [], [])
+        fresh = review_report.render({("plugin", "demo"): item}, {}, {("plugin", "demo")})
+        self.assertIn("Nothing is published yet", fresh)
+        self.assertIn("| new |", fresh)
+        blind = review_report.render({("plugin", "demo"): item}, None, {("plugin", "demo")})
+        self.assertIn("could not be read", blind)
+        self.assertIn("| unknown |", blind)
+
+    def test_author_text_is_escaped(self):
+        report = review_report.render({("plugin", "demo"): plugin_record("1.0.0", [], [])}, {}, {("plugin", "demo")})
+        self.assertNotIn("[evil]", report)
+        self.assertIn("Demo \\| \\*\\*x\\*\\*", report)
+        self.assertEqual(review_report.esc("a\n`b`<img src=x>"), "a \\`b\\`\\<img src=x\\>")
+
+    def test_effect_cost_and_removed_item(self):
+        effect = {"kind": "effect", "slug": "fx", "name": "Fx", "summary": "s", "authors": [{"name": "Ada"}], "license": "MIT",
+                  "categories": [], "version": "1.0.1", "file": {"sha256": "c" * 64, "bytes": 2000}, "cost": "heavy", "blend": "add",
+                  "uses": ["noise"], "knobs": [{"type": "float"}, {"type": "toggle"}], "previews": [
+                      {"sha256": "d" * 64, "bytes": 5, "width": 960, "height": 540, "alt": "x"}],
+                  "loop": {"sha256": "e" * 64, "bytes": 9, "width": 480, "height": 270, "fps": 15, "seconds": 3}}
+        old = dict(effect, version="1.0.0", cost="light", file={"sha256": "f" * 64, "bytes": 1500})
+        report = review_report.render({("effect", "fx"): effect}, {("effect", "fx"): old}, {("effect", "fx"), ("theme", "gone")})
+        self.assertIn("**heavy** (published: light; **slower**)", report)
+        self.assertIn("Knobs: 2 (1 float, 1 toggle)", report)
+        self.assertIn("Loop: 480x270, 9 bytes, 15 fps for 3 s", report)
+        self.assertIn("| `gone` | theme | removed from the catalog |", report)
+        self.assertIn("changes no plugin, theme or effect folder", review_report.render({}, {}, set()))
 
 
 if __name__ == "__main__":
