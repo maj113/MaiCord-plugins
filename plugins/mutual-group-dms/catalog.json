@@ -1,0 +1,15 @@
+{
+  "name": "Mutual Group DMs",
+  "summary": "Lists the group DMs you share with someone on their profile.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "chat",
+    "utility"
+  ],
+  "owner_id": "0x6D636D757467646D"
+}
