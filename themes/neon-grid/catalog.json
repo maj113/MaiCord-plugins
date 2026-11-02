@@ -1,0 +1,18 @@
+{
+  "name": "Neon Grid",
+  "summary": "Deep violet-black surfaces, a hot-pink accent and a faint drift of stars.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "CC0-1.0",
+  "categories": [
+    "neon",
+    "pink",
+    "dark"
+  ],
+  "version": "1.0.0",
+  "effect": "starfield",
+  "preview_alt": "Neon Grid in the main chat view, with faint stars over a violet-black background."
+}

@@ -1,0 +1,69 @@
+{
+  "version": "2.0",
+  "name": "Neon Grid",
+  "base": "dark",
+  "colors": {
+    "base_lowest": "#030006",
+    "base_lower": "#08020e",
+    "base_low": "#0c0414",
+    "surface": "#160a24",
+    "surface_high": "#20103a",
+    "interactive": "#321a52",
+    "interactive_hover": "#482570",
+    "accent": "#ff2e97",
+    "text_primary": "#fdf0fa",
+    "text_secondary": "#c9a9d6",
+    "avatar_placeholder": "#3d2260",
+    "notification": "#ff7a5c",
+    "syntax_keyword": "#ff6ac1",
+    "syntax_type": "#ffd866",
+    "syntax_string": "#7cf0b7",
+    "syntax_number": "#ffa56b",
+    "syntax_comment": "#8f74a8",
+    "syntax_operator": "#d6b8ee",
+    "syntax_builtin": "#4fd8f0",
+    "syntax_preprocessor": "#b78cff"
+  },
+  "semantic": {
+    "text": {
+      "link": "#ff6fb5",
+      "on_accent": "#14000c",
+      "positive": "#6ff0b0"
+    },
+    "accent": {
+      "success": "#22d38a",
+      "warning": "#ffc233"
+    },
+    "border": {
+      "subtle": "#d58bff24",
+      "strong": "#d58bff3d",
+      "focus": "#ff2e97"
+    },
+    "state": {
+      "hover": "#d58bff1f",
+      "pressed": "#d58bff33",
+      "row_hover": "#b06bff26",
+      "row_selected": "#ff2e9733"
+    },
+    "mention": {
+      "text": "#ff7dbd",
+      "inline_background": "#ff2e973a",
+      "background": "#ff2e9724"
+    },
+    "emphasis": {
+      "selected": "#ff2e9733"
+    }
+  },
+  "background": {
+    "effect": "starfield",
+    "knobs": {
+      "density": 0.07,
+      "speed": 0.35,
+      "size": 1.0,
+      "twinkle": 0.7
+    },
+    "universal": {
+      "opacity": 0.6
+    }
+  }
+}

@@ -10,6 +10,7 @@ Colour themes for MaiCord. The catalog lists them: they appear on MaiCord's Them
 | [Fjord](fjord/README.md) | Dark | A muted, frosty blue-grey dark theme in the spirit of the Nord palette. | MIT |
 | [Rose Dusk](rose-dusk/README.md) | Dark | Deep plum surfaces with a soft rose accent, like the sky just after sunset. | CC0-1.0 |
 | [Obsidian](obsidian/README.md) | Dark | True black chat and surfaces for OLED panels, with neutral greys and an emerald accent. | CC0-1.0 |
+| [Neon Grid](neon-grid/README.md) | Dark | Deep violet-black surfaces, a hot-pink accent and a faint drift of stars (asks for the Starfield effect). | CC0-1.0 |
 
 ## Layout
 
