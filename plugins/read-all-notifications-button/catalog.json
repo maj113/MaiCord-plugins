@@ -1,0 +1,15 @@
+{
+  "name": "Read All Notifications Button",
+  "summary": "A button above the server list that marks every server as read.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "notifications",
+    "utility"
+  ],
+  "owner_id": "0x6D6372656164616C"
+}
