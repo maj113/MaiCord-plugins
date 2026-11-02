@@ -1,0 +1,15 @@
+{
+  "name": "User Voice Show",
+  "summary": "Shows which voice channel a user is in.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "voice",
+    "chat"
+  ],
+  "owner_id": "0x6D63766F69636575"
+}
