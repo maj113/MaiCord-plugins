@@ -1,0 +1,21 @@
+{
+  "name": "Fjord",
+  "summary": "A muted, frosty blue-grey dark theme in the spirit of the Nord palette.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "muted",
+    "cool"
+  ],
+  "version": "1.0.0",
+  "derived_from": {
+    "url": "https://www.nordtheme.com",
+    "author": "Sven Greb",
+    "license": "MIT"
+  },
+  "preview_alt": "Fjord in the main chat view."
+}

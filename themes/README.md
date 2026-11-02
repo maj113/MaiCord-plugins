@@ -1,6 +1,6 @@
 # Themes
 
-Colour themes for MaiCord. The catalog doesn't list them yet: they appear in MaiCord's Browse tab once catalog format 2 (which adds the `theme` and `effect` kinds next to `plugin`) lands. Until then they're plain files you can import by hand, and nothing here changes what [`index/source.json`](../index/source.json) publishes.
+Colour themes for MaiCord. The catalog lists them: they appear on MaiCord's Themes page and at maicord.com/themes, and you can also import one by hand.
 
 | Theme | Base | Description | License |
 |---|---|---|---|
@@ -15,6 +15,7 @@ Colour themes for MaiCord. The catalog doesn't list them yet: they appear in Mai
 
 Each theme has its own folder named by its slug:
 
+- `catalog.json` and `details.md`: what the catalog shows (see the [repository README](../README.md#layout)).
 - `theme.json`: a MaiCord theme document (`"version": "2.0"`, 64 KiB at most). It's the same format as `assets/themes/example.maicord-theme.json` in the client repository, which lists every token.
 - `preview.png`: the main chat view at 1x (1440×900), rendered by MaiCord's own renderer.
 - `README.md`: name, author, license, description and the contrast figures.
@@ -25,4 +26,4 @@ Download a theme's `theme.json`, then in MaiCord choose **Settings > Appearance 
 
 ## Contributing a theme
 
-Open a pull request with a new folder holding the same three files. Themes here are licensed CC0-1.0 or MIT, say so in the README, and the text colours must meet WCAG AA (4.5:1 for text, 3:1 for muted text and accents).
+Open a pull request with a new folder holding these files. Themes here are licensed CC0-1.0 or MIT, say so in the README, and the text colours must meet WCAG AA (4.5:1 for text, 3:1 for muted text and accents).

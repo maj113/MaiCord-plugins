@@ -49,4 +49,4 @@ This theme meets WCAG AA for text, and MaiCord reports no contrast warnings for 
 
 ## Install
 
-Once the catalog lists themes, install it from MaiCord's Browse tab. Until then, download [`theme.json`](theme.json) and choose **Settings > Appearance > Import theme…**.
+Install it from MaiCord's Themes page, or download [`theme.json`](theme.json) and choose **Settings > Appearance > Import theme…**.

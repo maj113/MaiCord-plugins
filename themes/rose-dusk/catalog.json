@@ -1,0 +1,16 @@
+{
+  "name": "Rose Dusk",
+  "summary": "Deep plum surfaces with a soft rose accent, like the sky just after sunset.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "CC0-1.0",
+  "categories": [
+    "warm",
+    "purple"
+  ],
+  "version": "1.0.0",
+  "preview_alt": "Rose Dusk in the main chat view."
+}

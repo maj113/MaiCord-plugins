@@ -1,0 +1,16 @@
+{
+  "name": "Warm Paper",
+  "summary": "A warm, cream-coloured light theme with a terracotta accent, easy on the eyes.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "CC0-1.0",
+  "categories": [
+    "warm",
+    "cream"
+  ],
+  "version": "1.0.0",
+  "preview_alt": "Warm Paper in the main chat view."
+}

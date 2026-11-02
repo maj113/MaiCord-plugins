@@ -1,0 +1,16 @@
+{
+  "name": "Deep Ocean",
+  "summary": "A deep navy dark theme with a cool teal accent.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "CC0-1.0",
+  "categories": [
+    "blue",
+    "cool"
+  ],
+  "version": "1.0.0",
+  "preview_alt": "Deep Ocean in the main chat view."
+}

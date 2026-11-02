@@ -1,0 +1,15 @@
+{
+  "name": "Obsidian",
+  "summary": "True black chat and surfaces for OLED panels, with neutral greys and an emerald accent.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "CC0-1.0",
+  "categories": [
+    "oled"
+  ],
+  "version": "1.0.0",
+  "preview_alt": "Obsidian in the main chat view."
+}

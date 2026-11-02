@@ -1,0 +1,15 @@
+{
+  "name": "High Contrast",
+  "summary": "Pure black and white with a yellow accent, strong borders and heavier icons. Passes WCAG AAA for text.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "CC0-1.0",
+  "categories": [
+    "accessibility"
+  ],
+  "version": "1.0.0",
+  "preview_alt": "High Contrast in the main chat view."
+}
