@@ -1,0 +1,15 @@
+{
+  "name": "Typing Indicator",
+  "summary": "Marks the channels, DMs and servers where someone is typing.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "chat",
+    "notifications"
+  ],
+  "owner_id": "0x6D63747970696E64"
+}
