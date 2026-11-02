@@ -1,0 +1,15 @@
+{
+  "name": "Message Click Actions",
+  "summary": "Double-click a message to edit your own or reply to someone else's, or delete yours with a modified click.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "chat",
+    "utility"
+  ],
+  "owner_id": "0x6D636D7367636C6B"
+}
