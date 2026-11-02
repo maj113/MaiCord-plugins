@@ -1,0 +1,15 @@
+{
+  "name": "No Blocked Messages",
+  "summary": "Hides the messages of users you blocked instead of showing a blocked-messages row.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "chat",
+    "moderation"
+  ],
+  "owner_id": "0x6D636E6F626C6B64"
+}

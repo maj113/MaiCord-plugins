@@ -1,0 +1,15 @@
+{
+  "name": "Relationship Notifier",
+  "summary": "Tells you when a friend removes you, withdraws a request, or you lose a server or group chat.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "notifications",
+    "utility"
+  ],
+  "owner_id": "0x6D6372656C6E6F74"
+}

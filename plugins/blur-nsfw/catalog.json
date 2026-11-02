@@ -1,0 +1,15 @@
+{
+  "name": "Blur NSFW",
+  "summary": "Blurs the images and videos of messages in age-restricted channels.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "privacy",
+    "appearance"
+  ],
+  "owner_id": "0x6D63626C726E7366"
+}

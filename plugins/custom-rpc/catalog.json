@@ -1,0 +1,15 @@
+{
+  "name": "Custom RPC",
+  "summary": "Sets your own activity: a type, a name, two lines of text and an optional elapsed timer.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "fun",
+    "utility"
+  ],
+  "owner_id": "0x6D63637573727063"
+}

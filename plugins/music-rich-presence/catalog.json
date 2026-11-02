@@ -1,0 +1,15 @@
+{
+  "name": "Music Rich Presence",
+  "summary": "Shows the song you are scrobbling on Last.fm as your activity.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "fun",
+    "utility"
+  ],
+  "owner_id": "0x6D636C617374666D"
+}
