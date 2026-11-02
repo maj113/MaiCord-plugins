@@ -1,16 +1,25 @@
 name: Publish the catalog
 
-# Renders index/source.json into the signed format-1 index MaiCord reads,
-# verifies it against the public key compiled into MaiCord, and deploys
-#   https://maj113.github.io/MaiCord-plugins/v1/index.json
-#   https://maj113.github.io/MaiCord-plugins/v1/index.json.sig
-# to GitHub Pages. Each index is valid for 30 days (the client accepts at most
-# 35), so the weekly run re-signs it long before it expires. The reference
-# tooling (tools/release/plugin_index.py, cng_p256.py) comes from MaiCord's
-# master branch; cng_p256 uses Windows CNG, hence the Windows runner.
+# Builds every plugin, theme and effect in this repository, renders the signed
+# format-2 index MaiCord reads, verifies it against the public key compiled
+# into MaiCord, and deploys the site to GitHub Pages:
+#   https://maj113.github.io/MaiCord-plugins/index.json (+ .sig)
+#   https://maj113.github.io/MaiCord-plugins/details/<sha256>.md
+#   https://maj113.github.io/MaiCord-plugins/previews/<sha256>.png
+#   https://maj113.github.io/MaiCord-plugins/files/<sha256>.dll|.json|.mcfx
+# The build job needs no secret and runs on pull requests too: it compiles each
+# plugin with MaiCord's pinned clang-cl against the SDK headers of MaiCord's
+# repository, packs themes and effects (fxc, then previews and cost on WARP, the
+# in-box software rasterizer) and checks the result. Only the sign job, on
+# pushes to main, the weekly schedule and manual runs, holds the signing key.
+# Each index is valid for 30 days (the client accepts at most 35), so the weekly
+# run re-signs it long before it expires. MaiCord's tools/release
+# (plugin_index.py, the client's strict schema, and cng_p256.py, which signs
+# with Windows CNG) come from MaiCord's master branch, hence the Windows runner.
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
   schedule:
     - cron: "37 4 * * 1"
@@ -18,12 +27,85 @@ on:
 permissions: {}
 
 concurrency:
-  group: catalog
-  cancel-in-progress: false
+  group: ${{ github.event_name == 'pull_request' && format('catalog-pr-{0}', github.event.pull_request.number) || 'catalog' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  PAGES_URL: https://maj113.github.io/MaiCord-plugins
 
 jobs:
+  build:
+    name: Build items
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      # Full history: a release's time and "did the source change" come from git.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: catalog
+          fetch-depth: 0
+          persist-credentials: false
+
+      # The SDK headers every plugin builds against, the pinned LLVM toolchain
+      # and the index schema. MAICORD_SDK_REF pins a branch, tag or commit.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: maj113/MaiCord
+          ref: ${{ vars.MAICORD_SDK_REF || 'master' }}
+          path: maicord
+          sparse-checkout: |
+            /include/maicord/sdk/
+            /include/maicord/sys/
+            /src/render/effects/blue_noise_64.bin
+            /tools/release/
+            /tools/llvm_toolchain.json
+            /tools/resolve_llvm_toolchain.ps1
+            /tools/enter_build_environment.ps1
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install the tools
+        run: python -m pip install --disable-pip-version-check -r catalog/requirements.txt
+
+      - name: Check the build tools
+        run: python -B catalog/scripts/test_catalog_tools.py
+
+      # One step: the developer shell (clang-cl, fxc, the Windows SDK libraries)
+      # lives in this step's environment.
+      - name: Build the plugins, themes and effects
+        shell: powershell
+        env:
+          PUBLIC_KEY: ${{ vars.MAICORD_PLUGIN_CATALOG_PUBLIC_KEY }}
+          NEXT_PUBLIC_KEY: ${{ vars.MAICORD_PLUGIN_CATALOG_NEXT_PUBLIC_KEY }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          . maicord/tools/enter_build_environment.ps1
+          $keys = (@($env:PUBLIC_KEY, $env:NEXT_PUBLIC_KEY) | Where-Object { $_ }) -join ','
+          $verify = if ($keys) { @('--public-key', $keys) } else { @() }
+          python -B catalog/scripts/build_catalog.py --maicord maicord --out site --work build --previous $env:PAGES_URL @verify
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python -B catalog/scripts/check_site.py --tools maicord/tools/release --source build/index-source.json site
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: catalog-build
+          path: |
+            site
+            build/index-source.json
+          if-no-files-found: error
+          retention-days: 7
+
   sign:
     name: Render and sign
+    needs: build
+    if: github.event_name != 'pull_request'
     runs-on: windows-latest
     timeout-minutes: 15
     environment: catalog
@@ -38,14 +120,19 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: maj113/MaiCord
-          ref: master
+          ref: ${{ vars.MAICORD_SDK_REF || 'master' }}
           path: maicord
-          sparse-checkout: tools/release
+          sparse-checkout: /tools/release/
+          sparse-checkout-cone-mode: false
           persist-credentials: false
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: catalog-build
 
       - name: Render and sign
         shell: powershell
@@ -53,7 +140,7 @@ jobs:
           MAICORD_PLUGIN_CATALOG_SIGNING_KEY: ${{ secrets.MAICORD_PLUGIN_CATALOG_SIGNING_KEY }}
         run: |
           $ErrorActionPreference = 'Stop'
-          python -B catalog/scripts/publish_index.py --tools maicord/tools/release catalog/index/source.json site/v1/index.json
+          python -B catalog/scripts/publish_index.py --tools maicord/tools/release build/index-source.json site/index.json
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       # The key MaiCord builds compile in (MAICORD_PLUGIN_CATALOG_PUBLIC_KEY).
@@ -64,7 +151,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           if (!$env:PUBLIC_KEY) { throw 'Set the MAICORD_PLUGIN_CATALOG_PUBLIC_KEY repository variable.' }
-          python -B maicord/tools/release/plugin_index.py verify --kind official --public-key $env:PUBLIC_KEY site/v1/index.json
+          python -B catalog/scripts/check_site.py --tools maicord/tools/release --public-key $env:PUBLIC_KEY site
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

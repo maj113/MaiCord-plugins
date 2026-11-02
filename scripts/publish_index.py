@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Stamp, render and sign the official MaiCord plugin catalog index (format 1).
+"""Stamp, render and sign the official MaiCord catalog index (format 2).
 
-    python -B scripts/publish_index.py --tools <MaiCord>/tools/release index/source.json site/v1/index.json
+    python -B scripts/publish_index.py --tools <MaiCord>/tools/release build/index-source.json site/index.json
 
 The private JWK comes from the MAICORD_PLUGIN_CATALOG_SIGNING_KEY environment
 variable and never touches the disk. The script stamps the source with:

@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""Self-contained checks for the catalog build tools (no toolchain, GPU or key needed).
+
+    python -B scripts/test_catalog_tools.py
+
+Covers what can be checked without compiling: the effect annotations and knob slots against every effect in the
+repository, the `.mcfx` container layout, the details Markdown subset, the theme colour reader, and that every
+item folder has the files the build reads.
+"""
+
+from __future__ import annotations
+
+import json
+import struct
+import sys
+import unittest
+from pathlib import Path
+
+sys.dont_write_bytecode = True
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+import build_catalog  # noqa: E402
+import effects  # noqa: E402
+
+
+def effect_folders():
+    return sorted(p for p in (ROOT / "effects").iterdir() if p.is_dir())
+
+
+class EffectTests(unittest.TestCase):
+    def test_every_effect_agrees_with_its_sidecar_and_defines(self):
+        self.assertEqual(len(effect_folders()), 7)
+        for folder in effect_folders():
+            slug = folder.name
+            source = (folder / f"{slug}.hlsl").read_text(encoding="utf-8")
+            sidecar = effects.parse_sidecar((folder / f"{slug}.effect").read_text(encoding="utf-8"))
+            meta = json.loads((folder / "catalog.json").read_text(encoding="utf-8"))
+            header = effects.parse_header(source)
+            self.assertEqual(header["effect"]["name"], meta["name"], slug)
+            self.assertEqual(header["blend"], sidecar["blend"], slug)
+            self.assertEqual(sorted(header["uses"]), sorted(sidecar.get("uses", "").split()), slug)
+            effects.check_defines(source, header["knobs"])
+            values = effects.knob_values(header["knobs"])
+            given = [int(v) / 1000 for v in sidecar["knobs"].split()]
+            for lane, expected in enumerate(values):
+                self.assertAlmostEqual(given[lane] if lane < len(given) else 0.0, expected, delta=0.0015, msg=f"{slug} mc_knobs value {lane}")
+
+    def test_knob_slots(self):
+        knobs = [{"type": "float"}, {"type": "int"}, {"type": "toggle"}, {"type": "choice"}, {"type": "float"},
+                 {"type": "color"}, {"type": "float"}, {"type": "color"}]
+        self.assertEqual(effects.assign_slots(knobs), [(0, 0), (0, 1), (0, 2), (0, 3), (1, 0), (2, None), (3, 0), (4, None)])
+        with self.assertRaises(effects.EffectError):
+            effects.assign_slots([{"type": "color"}] * 9)
+
+    def test_knob_annotations(self):
+        source = ('// @effect name="X" license="MIT"\n// @blend add\n'
+                  '// @knob a float 0..2 = 0.5 "A"\n// @knob b int 1..4 = 3 "B"\n// @knob c toggle = off "C"\n'
+                  '// @knob d color = #AABBCC "D"\n// @knob e choice "One|Two|Three" = 2 "E"\n// @uses noise glyphs\n')
+        header = effects.parse_header(source)
+        self.assertEqual([k["type"] for k in header["knobs"]], ["float", "int", "toggle", "color", "choice"])
+        self.assertEqual(header["knobs"][4], {"id": "e", "type": "choice", "label": "E", "choices": ["One", "Two", "Three"], "default": 2})
+        for bad in ('// @knob a float 2..0 = 1 "A"', '// @knob a int 0..1.5 = 1 "A"', '// @knob a float 0..1 = 1', '// @blend multiply'):
+            with self.assertRaises(effects.EffectError, msg=bad):
+                effects.parse_header(source + bad + "\n")
+
+    def test_container_layout(self):
+        package = effects.pack_mcfx({"SOURCE": b"s" * 5, "DXBC": b"DXBC" + b"d" * 8, "MANIFEST": b"{}"})
+        magic, version, count, total, reserved = struct.unpack_from("<4sHHII", package)
+        self.assertEqual((magic, version, count, total, reserved), (b"MCFX", 1, 3, len(package), 0))
+        table = [struct.unpack_from("<IIII", package, 16 + 16 * i) for i in range(count)]
+        self.assertEqual([t[0] for t in table], [1, 2, 5])
+        offset = 16 + 16 * count
+        for kind, start, size, zero in table:
+            self.assertEqual((start, zero), (offset, 0))
+            offset += size
+        self.assertEqual(offset, len(package))
+        self.assertEqual(package[table[2][1]:], b"sssss")
+        with self.assertRaises(effects.EffectError):
+            effects.pack_mcfx({"MANIFEST": b"{}"})
+
+    def test_cost_classes(self):
+        self.assertEqual([effects.cost_class(r) for r in (0.1, 0.5, 0.51, 1.5, 4.0)], ["light", "light", "medium", "medium", "heavy"])
+        with self.assertRaises(effects.EffectError):
+            effects.cost_class(4.01)
+
+    def test_lint_refuses_what_the_client_does_not_bind(self):
+        ok = "ps_5_0\ndcl_constantbuffer CB0[12], immediateIndexed\ndcl_sampler s1, mode_default\ndcl_resource_texture2d (float,float,float,float) t2\nmov r0.x, l(1)\nret\n"
+        self.assertEqual(effects.lint(ok), {"instructions": 1, "samples": 0})
+        for bad in ("dcl_constantbuffer CB1[2], immediateIndexed\n", "dcl_uav_typed_texture2d (float) u0\n",
+                    "dcl_resource_texture2d (float,float,float,float) t7\n", "dcl_sampler s4, mode_default\n",
+                    "mov r0.x, l(1)\n" * 4097):
+            with self.assertRaises(effects.EffectError, msg=bad[:40]):
+                effects.lint(bad)
+        with self.assertRaises(effects.EffectError):
+            effects.lint("sample_l r0.xyzw, r1.xy, t0.xyzw, s0, l(0)\n" * 65)
+
+
+class DetailsAndThemeTests(unittest.TestCase):
+    def test_details_subset(self):
+        good = "Text with **bold**, `code` and [a link](https://example.com/x).\n\n### Heading\n\n- one\n- two\n\n```\n| not a table |\n```\n"
+        self.assertEqual(build_catalog.check_details(good, "t"), good.encode())
+        for bad in ("| a | b |\n", "![img](https://example.com/a.png)\n", "<b>x</b>\n", "1. one\n", "* item\n", "[x](http://example.com)\n",
+                    "> quote\n", "a\r\nb\n", "", "x" * 16385, "```\nunclosed\n", "tab\there\n"):
+            with self.assertRaises(build_catalog.BuildError, msg=bad[:20]):
+                build_catalog.check_details(bad, "t")
+
+    def test_every_item_has_its_files(self):
+        for kind, folder in build_catalog.DIRECTORIES.items():
+            directories = sorted(p for p in (ROOT / folder).iterdir() if p.is_dir())
+            self.assertGreaterEqual(len(directories), 5)
+            for directory in directories:
+                meta = build_catalog.item_metadata(kind, directory.name, directory)
+                build_catalog.check_details((directory / "details.md").read_bytes().decode("utf-8"), directory.name)
+                self.assertLessEqual(len(meta["summary"]), 255)
+                if kind == "plugin":
+                    self.assertTrue((directory / "plugin.cpp").is_file())
+                    self.assertRegex(meta["owner_id"], r"0x[0-9A-F]{16}")
+                if kind == "theme":
+                    self.assertTrue((directory / "theme.json").is_file() and (directory / "preview.png").is_file())
+
+    def test_theme_colours(self):
+        document = {"palette": {"p": [1, 0.5, 0, 1]}, "colors": {"a": "{palette.p}", "b": "#AABBCCDD"}}
+        self.assertEqual(build_catalog.theme_color(document, document["colors"]["a"]), "#ff8000")
+        self.assertEqual(build_catalog.theme_color(document, document["colors"]["b"]), "#aabbcc")
+        with self.assertRaises(build_catalog.BuildError):
+            build_catalog.theme_color(document, "red")
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=1)
