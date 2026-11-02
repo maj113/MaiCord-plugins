@@ -1,0 +1,14 @@
+{
+  "name": "Server Info",
+  "summary": "A server's age, owner, size, boosts and your permissions from its context menu.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "utility"
+  ],
+  "owner_id": "0x6D63737276696E66"
+}
