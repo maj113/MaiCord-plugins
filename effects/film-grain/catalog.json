@@ -1,0 +1,16 @@
+{
+  "name": "Film grain",
+  "summary": "A faint, constantly changing speckle over everything, light and dark, for a printed-paper feel.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MPL-2.0",
+  "categories": [
+    "texture",
+    "retro"
+  ],
+  "version": "1.0.0",
+  "preview_alt": "Film grain over the default dark theme."
+}

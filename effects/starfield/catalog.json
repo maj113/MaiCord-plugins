@@ -1,0 +1,16 @@
+{
+  "name": "Starfield",
+  "summary": "Three parallax layers of twinkling stars drifting sideways, sized in DIPs so they look the same at every DPI and resolution.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MPL-2.0",
+  "categories": [
+    "space",
+    "ambient"
+  ],
+  "version": "1.0.0",
+  "preview_alt": "Starfield over the default dark theme."
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Soft bokeh",
+  "summary": "Out-of-focus discs drifting slowly upward in three depth layers, in the theme's accent and text colours.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MPL-2.0",
+  "categories": [
+    "ambient",
+    "soft"
+  ],
+  "version": "1.0.0",
+  "preview_alt": "Soft bokeh over the default dark theme."
+}

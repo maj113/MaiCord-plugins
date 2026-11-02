@@ -1,0 +1,16 @@
+{
+  "name": "Wave lines",
+  "summary": "A stack of thin horizontal lines rippling with a few overlaid sines, fading from the theme's accent to its positive colour down the window.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MPL-2.0",
+  "categories": [
+    "abstract",
+    "minimal"
+  ],
+  "version": "1.0.0",
+  "preview_alt": "Wave lines over the default dark theme."
+}

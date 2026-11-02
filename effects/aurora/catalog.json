@@ -1,0 +1,16 @@
+{
+  "name": "Aurora",
+  "summary": "Soft curtains of light drifting across the top of the window, tinted by the theme's accent and positive roles over its background.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MPL-2.0",
+  "categories": [
+    "ambient",
+    "nature"
+  ],
+  "version": "1.0.0",
+  "preview_alt": "Aurora over the default dark theme."
+}

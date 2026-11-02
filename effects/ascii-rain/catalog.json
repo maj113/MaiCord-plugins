@@ -1,0 +1,16 @@
+{
+  "name": "ASCII rain",
+  "summary": "Columns of glyphs falling down the window, a bright head with a fading trail.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MPL-2.0",
+  "categories": [
+    "retro",
+    "text"
+  ],
+  "version": "1.0.0",
+  "preview_alt": "ASCII rain over the default dark theme."
+}

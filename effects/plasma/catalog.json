@@ -1,0 +1,16 @@
+{
+  "name": "Plasma",
+  "summary": "The classic sum of sines, tinted toward the theme so it never fights the UI.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MPL-2.0",
+  "categories": [
+    "abstract",
+    "retro"
+  ],
+  "version": "1.0.0",
+  "preview_alt": "Plasma over the default dark theme."
+}
