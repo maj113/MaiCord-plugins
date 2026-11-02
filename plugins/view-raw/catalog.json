@@ -1,0 +1,15 @@
+{
+  "name": "View Raw",
+  "summary": "Shows a message's raw text or its details as JSON, and copies either.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "developer",
+    "utility"
+  ],
+  "owner_id": "0x6D63766965777277"
+}
