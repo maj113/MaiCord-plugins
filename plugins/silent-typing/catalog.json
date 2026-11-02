@@ -1,0 +1,15 @@
+{
+  "name": "Silent Typing",
+  "summary": "Doesn't tell others when you're typing.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "privacy",
+    "chat"
+  ],
+  "owner_id": "0x6D63736C74797065"
+}
