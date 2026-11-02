@@ -1,0 +1,15 @@
+{
+  "name": "Permissions Viewer",
+  "summary": "Shows what a member can do in a server and how a channel changes it.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "moderation",
+    "utility"
+  ],
+  "owner_id": "0x6D637065726D7677"
+}
