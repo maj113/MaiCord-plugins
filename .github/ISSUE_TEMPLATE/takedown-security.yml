@@ -1,0 +1,57 @@
+name: Takedown or security report
+description: A listed item breaks a license, Discord's Terms, or puts people at risk, or you want your own work removed.
+title: "Report: "
+labels: ["takedown", "security"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Don't post an exploitable vulnerability or private information here; this issue is public.** Use
+        [private vulnerability reporting](https://github.com/maj113/MaiCord-plugins/security/advisories/new)
+        instead, and open this issue only to say that you did (without details) or when nothing needs to stay private.
+
+        A maintainer will look, remove the item from the catalog and, when copies already run, revoke its file so
+        clients turn it off (see [CONTRIBUTING.md](https://github.com/maj113/MaiCord-plugins/blob/main/CONTRIBUTING.md#takedowns-and-security-reports)).
+  - type: dropdown
+    id: reason
+    attributes:
+      label: What is the problem?
+      options:
+        - It is mine and it was listed without my permission
+        - Its license doesn't allow it, or credit is missing
+        - It may break Discord's Terms of Service
+        - It does more than it says (hidden network use, telemetry, obfuscation)
+        - A security problem that is already public or harmless to disclose
+        - I am the author and want it removed
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: item
+    attributes:
+      label: Which item?
+      description: Its kind, slug and version, or its page on maicord.com.
+      placeholder: plugin/translate 1.0.0
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: What did you find?
+      description: Where in the source (a file and line in the pull request or `plugins/<slug>/`), what it does, and what it should do instead. For ownership or license, the original work and its license.
+    validations:
+      required: true
+  - type: input
+    id: sha
+    attributes:
+      label: File SHA-256 (optional)
+      description: The 64 hex digits of the file to turn off, if you know them. A maintainer can find them otherwise.
+    validations:
+      required: false
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before you send
+      options:
+        - label: This contains no vulnerability details that would help someone attack users, and no private information.
+          required: true

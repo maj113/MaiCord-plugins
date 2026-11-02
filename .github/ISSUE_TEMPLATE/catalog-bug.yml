@@ -1,0 +1,66 @@
+name: Bug in a catalog item
+description: A plugin, theme or effect from this catalog doesn't work as described.
+title: "Bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a bug in MaiCord itself (a crash on start, the store pages, installing from a link) use the
+        [MaiCord repository](https://github.com/maj113/MaiCord/issues/new/choose). If the item could expose
+        someone's data or acts for their account, don't post details here; use the private report in the
+        issue chooser.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of item?
+      options:
+        - Plugin
+        - Theme
+        - Background effect
+    validations:
+      required: true
+  - type: input
+    id: item
+    attributes:
+      label: Which item, and which version?
+      description: Its name and version, as its page in MaiCord or on maicord.com shows them.
+      placeholder: Translate 1.0.0
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: MaiCord version
+      description: The release you run, for example 0.6.0.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect, and what happened?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can it be reproduced?
+      description: Numbered steps. For an effect, the knob values and the resolution, frame rate and GPU you see it on. For a plugin, its settings.
+    validations:
+      required: true
+  - type: textarea
+    id: console
+    attributes:
+      label: Console or screenshot
+      description: With Developer Mode on, Settings > Plugins > Developer has a Console of what the plugin logged. Remove names, ids and message text first.
+    validations:
+      required: false
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before you send
+      options:
+        - label: I updated the item and MaiCord and it still happens.
+          required: false
+        - label: I removed private information from everything above.
+          required: true

@@ -1,0 +1,52 @@
+name: Request a plugin, theme or effect
+description: Ask for something the catalog doesn't have yet.
+title: "Request: "
+labels: ["request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks. Someone may pick it up, but nothing is promised. A request that would break Discord's Terms of
+        Service (self-bots, unlocking paid features, saving deleted messages to disk) can't be listed; see the
+        [policy](https://github.com/maj113/MaiCord-plugins#discords-terms-of-service). You can write it yourself:
+        [CONTRIBUTING.md](https://github.com/maj113/MaiCord-plugins/blob/main/CONTRIBUTING.md).
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of item?
+      options:
+        - Plugin
+        - Theme
+        - Background effect
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What should it do?
+      description: What you would see or do in MaiCord, in a few sentences.
+    validations:
+      required: true
+  - type: textarea
+    id: reference
+    attributes:
+      label: Is there something like it elsewhere?
+      description: A link to a plugin, theme or shader in another client or tool, and its license if you know it. Say what to keep and what to change.
+    validations:
+      required: false
+  - type: textarea
+    id: access
+    attributes:
+      label: What would it need to read or change?
+      description: For a plugin, for example your messages, who is online, a website it would talk to. Skip for themes and effects.
+    validations:
+      required: false
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before you send
+      options:
+        - label: I searched the catalog (in MaiCord or on maicord.com) and the open requests, and it isn't there.
+          required: true
+        - label: It doesn't act for my account on its own, unlock paid Discord features, or save other people's messages to disk.
+          required: true

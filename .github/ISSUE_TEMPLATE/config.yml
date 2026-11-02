@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a vulnerability privately
+    url: https://github.com/maj113/MaiCord-plugins/security/advisories/new
+    about: For an exploitable flaw in a listed plugin, or anything you don't want public until it is fixed.
+  - name: A bug in MaiCord itself
+    url: https://github.com/maj113/MaiCord/issues/new/choose
+    about: The client (crashes, the Plugins, Themes and Effects pages, installing from a link) is a different repository.
+  - name: Add a plugin, theme or effect yourself
+    url: https://github.com/maj113/MaiCord-plugins/blob/main/CONTRIBUTING.md
+    about: Step-by-step guides for each kind, and what the review looks at.
