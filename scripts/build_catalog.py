@@ -331,7 +331,7 @@ def theme_color(document: dict, value, depth: int = 0) -> str:
 
 def theme_item(site: Site, slug: str, directory: Path, meta: dict, ctx: dict) -> dict:
     path = directory / "theme.json"
-    data = path.read_bytes()
+    data = path.read_bytes().replace(b"\r\n", b"\n")  # the repository stores LF; a CRLF checkout must hash the same
     if len(data) > 64 * 1024:
         raise BuildError(f"theme {slug}: theme.json is over 64 KiB")
     document = load_json(path)
