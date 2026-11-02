@@ -1,0 +1,15 @@
+{
+  "name": "Platform Indicators",
+  "summary": "Shows which devices a user is online on.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "appearance",
+    "chat"
+  ],
+  "owner_id": "0x6D63706C6174696E"
+}
