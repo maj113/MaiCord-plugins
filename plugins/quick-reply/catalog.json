@@ -1,0 +1,15 @@
+{
+  "name": "Quick Reply",
+  "summary": "Walk the message you reply to up and down the channel with Ctrl+Up and Ctrl+Down.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "chat",
+    "utility"
+  ],
+  "owner_id": "0x6D63716B72706C79"
+}
