@@ -1,0 +1,15 @@
+{
+  "name": "Send Timestamps",
+  "summary": "Inserts a Discord timestamp from a date and time you type.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "chat",
+    "utility"
+  ],
+  "owner_id": "0x6D63736E6474696D"
+}
