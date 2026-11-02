@@ -1,0 +1,15 @@
+{
+  "name": "Reverse Image Search",
+  "summary": "Searches the web for an image from its context menu.",
+  "authors": [
+    {
+      "name": "Maj Soklič",
+      "github": "maj113"
+    }
+  ],
+  "license": "MPL-2.0",
+  "categories": [
+    "utility"
+  ],
+  "owner_id": "0x6D6372696D677372"
+}

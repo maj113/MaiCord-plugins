@@ -1,0 +1,16 @@
+{
+  "name": "Translate",
+  "summary": "Translates messages with Google's free endpoint or DeepL.",
+  "authors": [
+    {
+      "name": "Maj Soklič",
+      "github": "maj113"
+    }
+  ],
+  "license": "MPL-2.0",
+  "categories": [
+    "chat",
+    "utility"
+  ],
+  "owner_id": "0x6D637472616E736C"
+}

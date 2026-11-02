@@ -1,0 +1,16 @@
+{
+  "name": "Clear URLs",
+  "summary": "Removes tracking parameters from links you send.",
+  "authors": [
+    {
+      "name": "Maj Soklič",
+      "github": "maj113"
+    }
+  ],
+  "license": "MPL-2.0",
+  "categories": [
+    "privacy",
+    "chat"
+  ],
+  "owner_id": "0x6D63636C75726C73"
+}

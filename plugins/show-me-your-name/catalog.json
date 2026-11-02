@@ -1,0 +1,16 @@
+{
+  "name": "Show Me Your Name",
+  "summary": "Shows usernames beside display names and nicknames.",
+  "authors": [
+    {
+      "name": "Maj Soklič",
+      "github": "maj113"
+    }
+  ],
+  "license": "MPL-2.0",
+  "categories": [
+    "chat",
+    "appearance"
+  ],
+  "owner_id": "0x6D63736D796E616D"
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Silent Toggle",
+  "summary": "Sends your messages as @silent while it's on.",
+  "authors": [
+    {
+      "name": "Maj Soklič",
+      "github": "maj113"
+    }
+  ],
+  "license": "MPL-2.0",
+  "categories": [
+    "chat",
+    "notifications"
+  ],
+  "owner_id": "0x6D63736C6E746F67"
+}
