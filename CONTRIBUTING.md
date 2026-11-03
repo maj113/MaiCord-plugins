@@ -118,15 +118,27 @@ An effect is one HLSL pixel shader plus a sidecar; it runs on the GPU only.
 2. **Write it** against `maicord/sdk/background.hlsli`. The `// @effect`,
    `// @knob`, `// @uses` and `// @blend` comments at the top of the `.hlsl` are
    the one source of truth for the name, knobs, inputs and blend. Credit the
-   original in `derived_from` when you port something.
+   original in `derived_from` when you port something. `@uses clock` and
+   `@uses appearance` give the shader the local time of day, the date and the
+   light or dark appearance (`mc_ambient`, eased by MaiCord); such an effect is
+   packed as interface 2 and needs a MaiCord that has them (older ones refuse
+   it), so use them only when the effect is about them. An effect that needs
+   more than one full-screen function can be a **pass graph** (`// @target`
+   and `// @pass` lines, up to six passes of pixel and vertex shaders over
+   host-made geometry, small float targets, persistent state); see
+   MaiCord's `samples/effects/README.md` (Pass graphs). It is packed as
+   interface 3, and CI measures and previews the whole graph.
 3. **Build it:** `maicord-plugin effect build` compiles, lints (constant buffer
-   `b0`, textures `t0-t4`, samplers `s0-s2`, no UAVs, at most 4,096
-   instructions and 64 texture reads) and writes `build\soft-rain.mcfx`. It also
-   rewrites the sidecar; keep its `resolution` and `fps` requests if you set
-   them.
+   `b0`, textures `t0-t4` or `t0-t10` for a graph, samplers `s0-s2`, no UAVs,
+   at most 4,096 instructions and 64 texture reads per shader) and writes
+   `build\soft-rain.mcfx`. It also rewrites the sidecar (a graph's `targets`
+   and `passes` lines too, which CI checks against the comments); keep its
+   `resolution` and `fps` requests if you set them.
 4. **Try it:** turn on Developer Mode and run
    `maicord-plugin effect preview --watch`; pick the effect under Appearance >
-   Background effect.
+   Background effect. `--time 18:30`, `--date 12-24`, `--day-seconds 60` and
+   `--appearance dark|light` stand in for the clock and the appearance;
+   `--real-inputs` goes back to the real ones.
 5. **Make the item folder** `effects/soft-rain/` with the `.hlsl`, the
    `.effect`, a `catalog.json` and a `details.md`. `effect` has no `pack`
    command, so write the last two by hand. The `@effect` name and license, the

@@ -3,9 +3,16 @@
 // (src/render/d3d11/effect_renderer.cpp, effect_inputs.cpp): the cbuffer McBackground, the built-in textures
 // and samplers, premultiplied output, and the three blend modes over a cleared target. The glyph grid is
 // rasterized with GDI (Consolas) where the client uses its own outline rasterizer, so glyph edges differ
-// slightly. Palette: the default theme's roles, sRGB values used as is.
+// slightly. Palette: the default theme's roles, sRGB values used as is. mc_ambient (interface 2) holds a fixed
+// moment for the preview: noon on 21 June, and the default theme's dark appearance.
 //
-//   effect_render --cso f.cso --blend normal|screen|add --uses noise,glyphs,blue_noise
+// A pass graph (interface 3) is drawn as the client draws it: --cso names a .graph file (effects.graph_text) whose
+// lines list the shaders (`shader vs|ps <cso>`), the targets (`target <format> <width> <height> <scale> <persistent>`)
+// and the passes (`pass <vs|-1> <ps> <target|-1> <inputs> <blend> <grid w> <grid h> <quads> <clear>`). Every pass
+// draws into its target or the effect's output (persistent targets swap planes after each pass that writes them),
+// and the output is then composited with the blend mode; the whole graph is the frame the benchmark times.
+//
+//   effect_render --cso f.cso|f.graph --blend normal|screen|add --uses noise,glyphs,blue_noise,clock,appearance
 //                 --blue blue_noise_64.bin --knobs v0,v1,...,v31 --size 960x540 --dip 1
 //                 --fps 15 --t0 2 --frames 1 --out frames.rgba         raw RGBA8, frames back to back
 //   effect_render ... --bench 300                                      prints the milliseconds per frame
@@ -17,6 +24,7 @@
 #include <d3d11.h>
 #include <d3dcompiler.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -32,8 +40,27 @@ struct Frame {
     float palette[8][4];
     float dark, intensity, reserved[2];
     float knobs[8][4];
+    float ambient[4];  // mc_ambient: day, year, month, dark (0 for an input the effect does not use)
+    float pass[4];     // mc_pass (interface 3): the pass's target in pixels, then its draw count
 };
-static_assert(sizeof(Frame) == 304);
+static_assert(sizeof(Frame) == 336);
+
+// A pass graph (interface 3), as the .graph file lists it.
+struct GraphTarget {
+    int format, width, height, scale, persistent;
+    ID3D11RenderTargetView* views[2];
+    ID3D11ShaderResourceView* reads[2];
+    int current;
+};
+struct GraphPass {
+    int vertex, pixel, target, inputs, blend, grid[2], quads, clear;
+};
+struct Graph {
+    std::vector<ID3D11VertexShader*> vertex;  // by shader index; null for a pixel shader
+    std::vector<ID3D11PixelShader*> pixel;    // null for a vertex shader
+    std::vector<GraphTarget> targets;
+    std::vector<GraphPass> passes;
+};
 
 // The default theme's roles (assets/themes/example.maicord-theme.json): background, surface, text, muted,
 // accent, positive, warning, critical.
@@ -124,6 +151,75 @@ bool has(const std::string& list, const char* word) {
     return ("," + list + ",").find(std::string(",") + word + ",") != std::string::npos;
 }
 
+// A render target cleared to transparent black, and its shader view.
+ID3D11RenderTargetView* make_target(ID3D11Device* device, ID3D11DeviceContext* context, int width, int height,
+                                    DXGI_FORMAT format, ID3D11ShaderResourceView** read) {
+    D3D11_TEXTURE2D_DESC description{};
+    description.Width = width;
+    description.Height = height;
+    description.MipLevels = description.ArraySize = 1;
+    description.Format = format;
+    description.SampleDesc.Count = 1;
+    description.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+    ID3D11Texture2D* texture = nullptr;
+    check(device->CreateTexture2D(&description, nullptr, &texture), "CreateTexture2D(graph target)");
+    ID3D11RenderTargetView* view = nullptr;
+    check(device->CreateRenderTargetView(texture, nullptr, &view), "CreateRenderTargetView(graph target)");
+    check(device->CreateShaderResourceView(texture, nullptr, read), "CreateShaderResourceView(graph target)");
+    texture->Release();
+    const float zero[4]{};
+    context->ClearRenderTargetView(view, zero);
+    return view;
+}
+
+// The .graph file: its shaders made, its targets sized for a `width` x `height` output and cleared.
+Graph load_graph(ID3D11Device* device, ID3D11DeviceContext* context, const char* path, int width, int height) {
+    static const DXGI_FORMAT kFormats[3]{DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R16G16B16A16_FLOAT,
+                                         DXGI_FORMAT_R32G32B32A32_FLOAT};
+    std::FILE* file = std::fopen(path, "r");
+    if (!file) fail(path);
+    Graph graph;
+    char line[1200];
+    while (std::fgets(line, sizeof(line), file)) {
+        char stage[3]{}, shader[1024]{};
+        GraphTarget target{};
+        GraphPass pass{};
+        if (std::sscanf(line, "shader %2s %1023[^\r\n]", stage, shader) == 2) {
+            const auto code = read_file(shader);
+            ID3D11VertexShader* vertex = nullptr;
+            ID3D11PixelShader* pixel = nullptr;
+            if (stage[0] == 'v')
+                check(device->CreateVertexShader(code.data(), code.size(), nullptr, &vertex), "CreateVertexShader(graph)");
+            else
+                check(device->CreatePixelShader(code.data(), code.size(), nullptr, &pixel), "CreatePixelShader(graph)");
+            graph.vertex.push_back(vertex);
+            graph.pixel.push_back(pixel);
+        } else if (std::sscanf(line, "target %d %d %d %d %d", &target.format, &target.width, &target.height,
+                               &target.scale, &target.persistent) == 5 && target.format >= 0 && target.format < 3) {
+            if (target.scale) {
+                target.width = std::max(1, (width * target.scale + 50) / 100);
+                target.height = std::max(1, (height * target.scale + 50) / 100);
+            }
+            for (int plane = 0; plane <= target.persistent; ++plane)
+                target.views[plane] = make_target(device, context, target.width, target.height, kFormats[target.format],
+                                                  &target.reads[plane]);
+            graph.targets.push_back(target);
+        } else if (std::sscanf(line, "pass %d %d %d %d %d %d %d %d %d", &pass.vertex, &pass.pixel, &pass.target, &pass.inputs,
+                               &pass.blend, &pass.grid[0], &pass.grid[1], &pass.quads, &pass.clear) == 9) {
+            graph.passes.push_back(pass);
+        } else if (line[0] != '\n') {
+            fail("cannot read a line of the graph file");
+        }
+    }
+    std::fclose(file);
+    for (const auto& pass : graph.passes)
+        if (pass.pixel < 0 || pass.pixel >= static_cast<int>(graph.pixel.size()) || !graph.pixel[pass.pixel] ||
+            pass.vertex >= static_cast<int>(graph.vertex.size()) || (pass.vertex >= 0 && !graph.vertex[pass.vertex]) ||
+            pass.target >= static_cast<int>(graph.targets.size()) || pass.blend < 0 || pass.blend > 3)
+            fail("the graph file names a shader or target it does not have");
+    return graph;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -161,10 +257,25 @@ int main(int argc, char** argv) {
     ID3D11DeviceContext* context = nullptr;
     check(D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, 0, levels, 1, D3D11_SDK_VERSION, &device, nullptr,
                             &context), "D3D11CreateDevice(WARP)");
+    // As the client's effect_renderer.cpp: no culling, so a graph's grids and quads draw both faces.
+    D3D11_RASTERIZER_DESC rasterizer_description{};
+    rasterizer_description.FillMode = D3D11_FILL_SOLID;
+    rasterizer_description.CullMode = D3D11_CULL_NONE;
+    rasterizer_description.DepthClipEnable = TRUE;
+    ID3D11RasterizerState* rasterizer = nullptr;
+    check(device->CreateRasterizerState(&rasterizer_description, &rasterizer), "CreateRasterizerState");
+    context->RSSetState(rasterizer);
 
-    const auto bytecode = read_file(cso.c_str());
+    // A .graph file is a pass graph; anything else is the single pixel shader.
+    const bool graphed = cso.size() > 6 && cso.compare(cso.size() - 6, 6, ".graph") == 0;
+    Graph graph;
     ID3D11PixelShader* pixel_shader = nullptr;
-    check(device->CreatePixelShader(bytecode.data(), bytecode.size(), nullptr, &pixel_shader), "CreatePixelShader");
+    if (graphed) {
+        graph = load_graph(device, context, cso.c_str(), width, height);
+    } else {
+        const auto bytecode = read_file(cso.c_str());
+        check(device->CreatePixelShader(bytecode.data(), bytecode.size(), nullptr, &pixel_shader), "CreatePixelShader");
+    }
     static const char kVertex[] =
         "float4 main(uint id : SV_VertexID) : SV_Position {"
         " float2 p = float2((id << 1) & 2, id & 2); return float4(p * float2(2, -2) + float2(-1, 1), 0, 1); }";
@@ -175,8 +286,8 @@ int main(int argc, char** argv) {
     check(device->CreateVertexShader(vertex_code->GetBufferPointer(), vertex_code->GetBufferSize(), nullptr, &vertex_shader),
           "CreateVertexShader");
 
-    // t0 noise, t1 glyphs, t2 blue noise, t3 and t4 package textures (opaque black when declared).
-    ID3D11ShaderResourceView* views[5]{};
+    // t0 noise, t1 glyphs, t2 blue noise, t3 to t6 package textures (opaque black when declared).
+    ID3D11ShaderResourceView* views[7]{};
     if (has(uses, "noise")) {
         std::vector<uint32_t> noise(256 * 256);
         for (uint32_t i = 0; i < noise.size(); ++i) noise[i] = pcg(i);
@@ -189,9 +300,10 @@ int main(int argc, char** argv) {
         views[2] = make_view(device, 64, 64, DXGI_FORMAT_R8_UNORM, table.data(), 64);
     }
     const uint32_t black = 0xFF000000u;
-    if (has(uses, "texture0")) views[3] = make_view(device, 1, 1, DXGI_FORMAT_R8G8B8A8_UNORM, &black, 4);
-    if (has(uses, "texture1")) views[4] = make_view(device, 1, 1, DXGI_FORMAT_R8G8B8A8_UNORM, &black, 4);
-    context->PSSetShaderResources(0, 5, views);
+    const char* const textures[4]{"texture0", "texture1", "texture2", "texture3"};
+    for (int i = 0; i < 4; ++i)
+        if (has(uses, textures[i])) views[3 + i] = make_view(device, 1, 1, DXGI_FORMAT_R8G8B8A8_UNORM, &black, 4);
+    context->PSSetShaderResources(0, 7, views);
 
     ID3D11SamplerState* samplers[3]{};
     const D3D11_FILTER filters[3]{D3D11_FILTER_MIN_MAG_MIP_POINT, D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT,
@@ -253,6 +365,42 @@ int main(int argc, char** argv) {
     context->PSSetShader(pixel_shader, nullptr, 0);
     context->PSSetConstantBuffers(0, 1, &constants);
 
+    // A graph draws into its own output, which the blend mode then composites like a single pass's picture.
+    ID3D11RenderTargetView* output_view = nullptr;
+    ID3D11ShaderResourceView* output_read = nullptr;
+    ID3D11PixelShader* composite = nullptr;
+    ID3D11BlendState* pass_blends[4]{};  // opaque (none), alpha, add, premultiplied
+    if (graphed) {
+        output_view = make_target(device, context, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, &output_read);
+        static const char kComposite[] =
+            "Texture2D t : register(t0); float4 main(float4 p : SV_Position) : SV_Target { return t.Load(int3(p.xy, 0)); }";
+        ID3DBlob* code = nullptr;
+        check(D3DCompile(kComposite, sizeof(kComposite) - 1, nullptr, nullptr, nullptr, "main", "ps_5_0", 0, 0, &code, &errors),
+              "D3DCompile(composite)");
+        check(device->CreatePixelShader(code->GetBufferPointer(), code->GetBufferSize(), nullptr, &composite),
+              "CreatePixelShader(composite)");
+        // Source, destination, source alpha, destination alpha, as the client's pass blends.
+        const D3D11_BLEND modes[4][4]{{},
+                                      {D3D11_BLEND_SRC_ALPHA, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA},
+                                      {D3D11_BLEND_ONE, D3D11_BLEND_ONE, D3D11_BLEND_ONE, D3D11_BLEND_ONE},
+                                      {D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA}};
+        for (int i = 1; i < 4; ++i) {
+            D3D11_BLEND_DESC description{};
+            auto& pass_blend = description.RenderTarget[0];
+            pass_blend.BlendEnable = TRUE;
+            pass_blend.SrcBlend = modes[i][0];
+            pass_blend.DestBlend = modes[i][1];
+            pass_blend.BlendOp = D3D11_BLEND_OP_ADD;
+            pass_blend.SrcBlendAlpha = modes[i][2];
+            pass_blend.DestBlendAlpha = modes[i][3];
+            pass_blend.BlendOpAlpha = D3D11_BLEND_OP_ADD;
+            pass_blend.RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+            check(device->CreateBlendState(&description, &pass_blends[i]), "CreateBlendState(pass)");
+        }
+        context->VSSetConstantBuffers(0, 1, &constants);
+        context->VSSetSamplers(0, 3, samplers);
+    }
+
     Frame frame{};
     std::memcpy(frame.palette, kPalette, sizeof(kPalette));
     frame.dark = 1;
@@ -262,12 +410,77 @@ int main(int argc, char** argv) {
     frame.resolution[1] = static_cast<float>(height);
     frame.pointer[0] = frame.pointer[1] = -1;
     std::memcpy(frame.knobs, knobs, sizeof(knobs));
+    if (has(uses, "clock")) {
+        frame.ambient[0] = 0.5f;                     // 12:00
+        frame.ambient[1] = (171.0f + 0.5f) / 365.0f;  // 21 June at noon
+        frame.ambient[2] = 6.0f;                     // June
+    }
+    if (has(uses, "appearance")) frame.ambient[3] = 1.0f;
     const float clear[4]{kPalette[0][0], kPalette[0][1], kPalette[0][2], 1};
 
+    // Every pass in order, as the client's draw_frame does, then the output bound for the composite below.
+    auto draw_graph = [&]() {
+        ID3D11ShaderResourceView* none[11]{};
+        for (const auto& pass : graph.passes) {
+            ID3D11RenderTargetView* view = output_view;
+            int pass_width = width, pass_height = height;
+            GraphTarget* written = nullptr;
+            if (pass.target >= 0) {
+                // A persistent target draws its other plane: the pass reads the last state and writes the next.
+                written = &graph.targets[pass.target];
+                view = written->views[written->current ^ written->persistent];
+                pass_width = written->width;
+                pass_height = written->height;
+            }
+            ID3D11ShaderResourceView* reads[11]{};
+            std::copy(views, views + 7, reads);
+            for (size_t t = 0; t < graph.targets.size(); ++t)
+                if (pass.inputs >> t & 1) reads[7 + t] = graph.targets[t].reads[graph.targets[t].current];
+            context->PSSetShaderResources(0, 11, none);
+            context->VSSetShaderResources(0, 11, none);
+            context->OMSetRenderTargets(1, &view, nullptr);
+            const D3D11_VIEWPORT pass_viewport{0, 0, static_cast<float>(pass_width), static_cast<float>(pass_height), 0, 1};
+            context->RSSetViewports(1, &pass_viewport);
+            if (pass.clear) {
+                const float zero[4]{};
+                context->ClearRenderTargetView(view, zero);
+            }
+            context->PSSetShaderResources(0, 11, reads);
+            context->VSSetShaderResources(0, 11, reads);
+            context->VSSetShader(pass.vertex >= 0 ? graph.vertex[pass.vertex] : vertex_shader, nullptr, 0);
+            context->PSSetShader(graph.pixel[pass.pixel], nullptr, 0);
+            context->OMSetBlendState(pass_blends[pass.blend], nullptr, 0xFFFFFFFFu);
+            const bool grid = pass.grid[0] > 0;
+            frame.pass[0] = static_cast<float>(pass_width);
+            frame.pass[1] = static_cast<float>(pass_height);
+            frame.pass[2] = static_cast<float>(grid ? pass.grid[0] : pass.quads);
+            frame.pass[3] = static_cast<float>(grid ? pass.grid[1] : pass.quads ? 1 : 0);
+            context->UpdateSubresource(constants, 0, nullptr, &frame, 0, 0);
+            if (pass.vertex < 0) {
+                context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+                context->Draw(3, 0);
+            } else {
+                // grid(W, H): H - 1 instanced strips of 2W vertices; quads(N): N instanced strips of four.
+                context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+                context->DrawInstanced(grid ? 2 * pass.grid[0] : 4, grid ? pass.grid[1] - 1 : pass.quads, 0, 0);
+            }
+            if (written) written->current ^= written->persistent;
+        }
+        context->PSSetShaderResources(0, 11, none);
+        context->VSSetShaderResources(0, 11, none);
+        context->OMSetRenderTargets(1, &target_view, nullptr);
+        context->RSSetViewports(1, &viewport);
+        context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        context->VSSetShader(vertex_shader, nullptr, 0);
+        context->PSSetShader(composite, nullptr, 0);
+        context->PSSetShaderResources(0, 1, &output_read);
+        context->OMSetBlendState(blend_state, factor, 0xFFFFFFFFu);
+    };
     auto draw = [&](float time, float index) {
         frame.time = time;
         frame.delta = 1.0f / fps;
         frame.frame = index;
+        if (graphed) draw_graph();
         context->UpdateSubresource(constants, 0, nullptr, &frame, 0, 0);
         context->ClearRenderTargetView(target_view, clear);
         context->Draw(3, 0);

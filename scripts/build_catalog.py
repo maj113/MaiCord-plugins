@@ -380,7 +380,8 @@ def effect_item(site: Site, slug: str, directory: Path, meta: dict, renderer, ca
     package = effects.build_package(slug, directory, {"name": meta["name"], "authors": meta["authors"],
                                     "license": meta["license"], "derived_from": meta.get("derived_from")},
                                     meta["version"], ctx["include"], ctx["fxc"], ctx["work"] / "effects" / slug)
-    header, cso = package["header"], ctx["work"] / "effects" / slug / f"{slug}.cso"
+    # The shader, or for a pass graph (interface 3) the graph file effect_render draws every pass from.
+    header, cso = package["header"], package["render"]
     uses, blend, knobs = header["uses"], header["blend"], package["knob_values"]
     milliseconds = renderer.milliseconds(cso, blend, uses, knobs)
     cost = effects.cost_class(milliseconds / calibration_ms)
@@ -388,7 +389,9 @@ def effect_item(site: Site, slug: str, directory: Path, meta: dict, renderer, ca
         f"{package['lint']['instructions']} instructions, {package['lint']['samples']} texture reads")
     still, size = images.still(renderer, cso, blend, uses, knobs)
     loop, shape = images.loop(renderer, cso, blend, uses, knobs)
-    return {"data": package["package"], "cost": cost, "blend": blend, "uses": [u for u in effects.USES if u in uses],
+    # The index lists only the names every format-2 client knows (effects.INDEX_USES); clock and appearance live in
+    # the package's interface-2 manifest, which older clients refuse on their own.
+    return {"data": package["package"], "cost": cost, "blend": blend, "uses": [u for u in effects.INDEX_USES if u in uses],
             "knobs": header["knobs"],
             "previews": [dict(site.put("previews", "png", still), width=size[0], height=size[1], alt=meta["preview_alt"])],
             "loop": dict(site.put("previews", "png", loop), **shape)}

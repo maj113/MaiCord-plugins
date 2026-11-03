@@ -4,10 +4,17 @@ and pack the `.mcfx` package (design section 16). Everything an effect declares 
 checks that the three agree, so the package, the preview and the index never describe different shaders.
 
 `.mcfx` container (little-endian), shared with the client's mcfx_parse:
-  header   16 bytes: "MCFX", u16 format = 1, u16 section count (<= 6), u32 file bytes, u32 0
+  header   16 bytes: "MCFX", u16 format = 1, u16 section count (<= 9), u32 file bytes, u32 0
   table    count x 16 bytes: u32 type, u32 offset, u32 bytes, u32 0
-  types    1 MANIFEST, 2 DXBC, 3 TEXTURE0, 4 TEXTURE1, 5 SOURCE, 6 PREVIEW; strictly ascending
+  types    1 MANIFEST, 2 DXBC, 3 TEXTURE0, 4 TEXTURE1, 5 SOURCE, 6 PREVIEW, 7 TEXTURE2, 8 TEXTURE3, 9 SHADERS;
+           strictly ascending
   sections packed back to back after the table, no padding; the last one ends at the file's end
+
+The manifest's "interface" is 1; 2 when the effect uses clock or appearance (mc_ambient); 3 for a pass graph
+(`@target` / `@pass` lines: up to six passes of ps_5_0 and vs_5_0 shaders, the first pass's pixel shader in DXBC
+and the others, in order of first use, in SHADERS) or texture2/texture3. A client before an interface refuses its
+packages. The catalog index lists only INDEX_USES, the names every format-2 client reads (its index reader refuses an
+unknown name, so a new one there would break the whole catalog for it).
 """
 
 from __future__ import annotations
@@ -21,19 +28,31 @@ import subprocess
 from pathlib import Path
 
 INTERFACE = 1
+AMBIENT_USES = ("clock", "appearance")  # interface 2
+GRAPH_USES = ("texture2", "texture3")  # interface 3
 MANIFEST_MAX = 16 * 1024
 DXBC_MAX = 64 * 1024
+SHADERS_MAX = 512 * 1024
 SOURCE_MAX = 64 * 1024
 PACKAGE_MAX = 1536 * 1024
 INSTRUCTIONS_MAX = 4096
 SAMPLES_MAX = 64
 KNOB_ROWS = 8
 NAME_MAX = 48
-USES = ("noise", "glyphs", "blue_noise", "pointer", "texture0", "texture1")
+INDEX_USES = ("noise", "glyphs", "blue_noise", "pointer", "texture0", "texture1")
+USES = INDEX_USES + AMBIENT_USES + GRAPH_USES
 BLENDS = ("normal", "screen", "add")
 RESOLUTIONS = (25, 35, 50, 75, 100)
 FRAME_RATES = (10, 15, 24, 30, 60)
-SECTION = {"MANIFEST": 1, "DXBC": 2, "TEXTURE0": 3, "TEXTURE1": 4, "SOURCE": 5, "PREVIEW": 6}
+SECTION = {"MANIFEST": 1, "DXBC": 2, "TEXTURE0": 3, "TEXTURE1": 4, "SOURCE": 5, "PREVIEW": 6, "TEXTURE2": 7,
+           "TEXTURE3": 8, "SHADERS": 9}
+# The pass graph's limits (the client's include/maicord/render/effects/background_effect.hpp).
+GRAPH_PASSES, GRAPH_TARGETS, GRAPH_SHADERS = 6, 4, 12
+TARGET_EXTENT, FIXED_BYTES, SCALED_BYTES = 512, 8 << 20, 16
+GRID_EXTENT, QUADS_MAX = 256, 16384
+TEXEL_BYTES = {"rgba8": 4, "rgba16f": 8, "rgba32f": 16}
+PASS_BLENDS = ("opaque", "alpha", "add", "premultiplied")
+VERSION_TOKENS = {"ps_5_0": 0x50, "vs_5_0": 0x10050}
 # Cost classes from the WARP measurement, as multiples of the calibration shader's time on the same machine.
 COST_LIMITS = (("light", 0.5), ("medium", 1.5), ("heavy", 4.0))  # slower than the last is refused ("extreme")
 SAMPLE_OPS = ("sample", "sample_l", "sample_b", "sample_d", "sample_c", "sample_c_lz", "ld", "gather4", "lod")
@@ -47,6 +66,8 @@ class EffectError(Exception):
 _PAIR = re.compile(r'(\w+)="([^"]*)"')
 _NUMBER = r"-?\d+(?:\.\d+)?"
 _KNOB = re.compile(r'//\s*@knob\s+([a-z][a-z0-9_]*)\s+(float|int|toggle|color|choice)\s*(.*)$')
+_IDENTIFIER = r"[A-Za-z_][A-Za-z0-9_]*"
+_TARGET = re.compile(r"//\s*@target\s+([a-z][a-z0-9_]*)\s+(rgba8|rgba16f|rgba32f)\s+(?:(\d+)x(\d+)|(\d+)%)(\s+persistent)?$")
 
 
 def _number(text: str):
@@ -55,8 +76,8 @@ def _number(text: str):
 
 
 def parse_header(source: str) -> dict:
-    """The `@effect`, `@knob`, `@uses` and `@blend` comment lines of one effect."""
-    header = {"effect": {}, "knobs": [], "uses": [], "blend": None}
+    """The `@effect`, `@knob`, `@uses`, `@blend`, `@target` and `@pass` comment lines of one effect."""
+    header = {"effect": {}, "knobs": [], "uses": [], "blend": None, "targets": [], "passes": []}
     for number, line in enumerate(source.splitlines(), 1):
         line = line.strip()
         where = f"line {number}"
@@ -71,6 +92,18 @@ def parse_header(source: str) -> dict:
             if not match:
                 raise EffectError(f"{where}: cannot read the @knob line")
             header["knobs"].append(_parse_knob(match, where))
+        elif line.startswith("// @target"):
+            match = _TARGET.match(line)
+            if not match:
+                raise EffectError(f"{where}: expected @target <id> rgba8|rgba16f|rgba32f <W>x<H>|<P>% [persistent]")
+            target = {"id": match.group(1), "format": match.group(2), "persistent": bool(match.group(6))}
+            if match.group(5):
+                target["scale"] = int(match.group(5))
+            else:
+                target["size"] = [int(match.group(3)), int(match.group(4))]
+            header["targets"].append(target)
+        elif line.startswith("// @pass"):
+            header["passes"].append(_parse_pass(line[len("// @pass"):].split(), where))
     for key, allowed in (("uses", USES),):
         for use in header[key]:
             if use not in allowed:
@@ -79,7 +112,115 @@ def parse_header(source: str) -> dict:
         raise EffectError(f"@blend must be one of {', '.join(BLENDS)}")
     if not header["effect"].get("name") or not header["effect"].get("license"):
         raise EffectError("@effect needs name and license")
+    if header["targets"] and not header["passes"]:
+        raise EffectError("@target needs @pass lines that draw into it")
     return header
+
+
+def _parse_pass(words: list, where: str) -> dict:
+    """`@pass <ps> [vs=<entry>] [grid=WxH | quads=N] [to=<target>] [in=<target>,...] [blend=...] [clear]`."""
+    if not words or not re.fullmatch(_IDENTIFIER, words[0]):
+        raise EffectError(f"{where}: @pass starts with the pixel shader's entry point")
+    result = {"ps": words[0], "to": "out", "in": [], "blend": "opaque", "clear": False}
+    for word in words[1:]:
+        key, _, value = word.partition("=")
+        if word == "clear":
+            result["clear"] = True
+        elif key == "vs" and re.fullmatch(_IDENTIFIER, value):
+            result["vs"] = value
+        elif key == "grid" and re.fullmatch(r"\d+x\d+", value):
+            result["grid"] = [int(v) for v in value.split("x")]
+        elif key == "quads" and value.isdigit():
+            result["quads"] = int(value)
+        elif key == "to" and value:
+            result["to"] = value
+        elif key == "in" and value:
+            result["in"] = value.split(",")
+        elif key == "blend" and value in PASS_BLENDS:
+            result["blend"] = value
+        else:
+            raise EffectError(f"{where}: cannot read {word!r}")
+    return result
+
+
+def graph_of(header: dict) -> tuple[list, list, list] | None:
+    """(manifest "targets", manifest "passes", the shaders as (entry, profile) in index order) checked against the
+    client's limits, as maicord-plugin builds them; None without @pass lines. Shader 0 is the first pass's pixel
+    shader; the others follow in order of first use."""
+    targets, passes = header["targets"], header["passes"]
+    if not passes:
+        return None
+    if len(passes) > GRAPH_PASSES or len(targets) > GRAPH_TARGETS:
+        raise EffectError(f"a graph has at most {GRAPH_PASSES} passes and {GRAPH_TARGETS} targets")
+    ids = [t["id"] for t in targets]
+    if len(set(ids)) != len(ids) or "out" in ids:
+        raise EffectError("target ids must differ, and 'out' is the output")
+    fixed = scaled = 0
+    documents = []
+    for target in targets:
+        planes = 2 if target["persistent"] else 1
+        if "size" in target:
+            width, height = target["size"]
+            if not (1 <= width <= TARGET_EXTENT and 1 <= height <= TARGET_EXTENT):
+                raise EffectError(f"target {target['id']}: a fixed size is 1x1 to {TARGET_EXTENT}x{TARGET_EXTENT}")
+            fixed += TEXEL_BYTES[target["format"]] * planes * width * height
+            document = {"format": target["format"], "size": [width, height]}
+        else:
+            if not 1 <= target["scale"] <= 100:
+                raise EffectError(f"target {target['id']}: a scale is 1% to 100% of the output")
+            scaled += TEXEL_BYTES[target["format"]] * planes * target["scale"] ** 2
+            document = {"format": target["format"], "scale": target["scale"]}
+        if target["persistent"]:
+            document["persistent"] = True
+        documents.append(document)
+    if fixed > FIXED_BYTES or scaled > SCALED_BYTES * 10000:
+        raise EffectError("the targets need more memory than the client allows")
+    shaders = [(passes[0]["ps"], "ps_5_0")]
+    for item in passes:
+        for entry, profile in ((item.get("vs"), "vs_5_0"), (item["ps"], "ps_5_0")):
+            if entry and (entry, profile) not in shaders:
+                if (entry, "ps_5_0" if profile == "vs_5_0" else "vs_5_0") in shaders:
+                    raise EffectError(f"{entry} is used as both a vertex and a pixel shader")
+                shaders.append((entry, profile))
+    if len(shaders) > GRAPH_SHADERS:
+        raise EffectError(f"a graph has at most {GRAPH_SHADERS} shaders")
+    pass_documents = []
+    for item in passes:
+        where = f"@pass {item['ps']}"
+        document = {"ps": shaders.index((item["ps"], "ps_5_0"))}
+        if ("grid" in item or "quads" in item) != ("vs" in item) or ("grid" in item and "quads" in item):
+            raise EffectError(f"{where}: a vertex shader draws grid=WxH or quads=N, and only one")
+        if "vs" in item:
+            document["vs"] = shaders.index((item["vs"], "vs_5_0"))
+        if "grid" in item:
+            if not all(2 <= v <= GRID_EXTENT for v in item["grid"]):
+                raise EffectError(f"{where}: a grid is 2x2 to {GRID_EXTENT}x{GRID_EXTENT} points")
+            document["grid"] = item["grid"]
+        if "quads" in item:
+            if not 1 <= item["quads"] <= QUADS_MAX:
+                raise EffectError(f"{where}: quads is 1 to {QUADS_MAX}")
+            document["quads"] = item["quads"]
+        for name in item["in"] + ([] if item["to"] == "out" else [item["to"]]):
+            if name not in ids:
+                raise EffectError(f"{where}: no target {name!r}")
+        inputs = [ids.index(name) for name in item["in"]]
+        if len(set(inputs)) != len(inputs):
+            raise EffectError(f"{where}: an input is named twice")
+        if item["to"] != "out":
+            target = ids.index(item["to"])
+            if target in inputs and not targets[target]["persistent"]:
+                raise EffectError(f"{where}: a pass reads the target it draws only when that target is persistent")
+            document["target"] = target
+        if inputs:
+            document["inputs"] = inputs
+        if item["blend"] != "opaque":
+            document["blend"] = item["blend"]
+        if item["clear"]:
+            document["clear"] = True
+        pass_documents.append(document)
+    if all(item["to"] != "out" for item in passes):
+        raise EffectError("no @pass draws the output")
+    return documents, pass_documents, shaders
 
 
 def _parse_knob(match, where: str) -> dict:
@@ -199,19 +340,22 @@ def find_fxc() -> str:
     raise EffectError("fxc.exe was not found (set MAICORD_FXC_EXECUTABLE or install the Windows SDK)")
 
 
-def compile_effect(fxc: str, hlsl: Path, include: Path, work: Path) -> tuple[bytes, str]:
-    """(stripped ps_5_0 bytecode, disassembly), compiled as the client's tests compile the samples."""
+def compile_effect(fxc: str, hlsl: Path, include: Path, work: Path, entry: str = "main",
+                   profile: str = "ps_5_0") -> tuple[bytes, str]:
+    """(stripped bytecode, disassembly) of one entry point, compiled as the client's tests compile the samples. The
+    .cso stays in `work` (<stem>.cso, or <stem>.<entry>.cso for a graph's shader) for effect_render."""
     work.mkdir(parents=True, exist_ok=True)
-    cso, asm = work / (hlsl.stem + ".cso"), work / (hlsl.stem + ".asm")
-    result = subprocess.run([fxc, "/nologo", "/T", "ps_5_0", "/E", "main", "/O3", "/Ges", "/WX", "/I", str(include),
+    stem = hlsl.stem if entry == "main" else f"{hlsl.stem}.{entry}"
+    cso, asm = work / (stem + ".cso"), work / (stem + ".asm")
+    result = subprocess.run([fxc, "/nologo", "/T", profile, "/E", entry, "/O3", "/Ges", "/WX", "/I", str(include),
                              "/Qstrip_debug", "/Qstrip_reflect", "/Fo", str(cso), "/Fc", str(asm), str(hlsl)],
                             capture_output=True, text=True)
     if result.returncode:
-        raise EffectError(f"fxc failed for {hlsl.name}:\n{result.stdout}{result.stderr}")
+        raise EffectError(f"fxc failed for {hlsl.name} ({entry}):\n{result.stdout}{result.stderr}")
     return cso.read_bytes(), asm.read_text(encoding="utf-8", errors="replace")
 
 
-def check_bytecode(code: bytes) -> None:
+def check_bytecode(code: bytes, profile: str = "ps_5_0") -> None:
     if len(code) > DXBC_MAX:
         raise EffectError(f"the bytecode is {len(code)} bytes, over {DXBC_MAX}")
     if code[:4] != b"DXBC":
@@ -221,18 +365,19 @@ def check_bytecode(code: bytes) -> None:
         offset = struct.unpack_from("<I", code, 32 + 4 * index)[0]
         tag, size = struct.unpack_from("<4sI", code, offset)
         if tag in (b"SHEX", b"SHDR"):
-            if struct.unpack_from("<I", code, offset + 8)[0] != 0x50:
-                raise EffectError("the shader is not ps_5_0")
+            if struct.unpack_from("<I", code, offset + 8)[0] != VERSION_TOKENS[profile]:
+                raise EffectError(f"the shader is not {profile}")
             return
     raise EffectError("no shader chunk")
 
 
-def lint(assembly: str) -> dict:
-    """Reflection lint from the disassembly: only b0, t0-t4 and s0-s2; no UAVs; instruction and sample caps."""
+def lint(assembly: str, textures: int = 4) -> dict:
+    """Reflection lint from the disassembly: only b0, t0-t4 (t0-t10 at interface 3) and s0-s2; no UAVs; instruction
+    and sample caps. Pixel and vertex shaders alike."""
     instructions = samples = 0
     for raw in assembly.splitlines():
         line = raw.strip()
-        if not line or line.startswith("//") or line.startswith("ps_"):
+        if not line or line.startswith("//") or line.startswith("ps_") or line.startswith("vs_"):
             continue
         opcode = line.split()[0]
         if opcode.startswith("dcl_"):
@@ -241,8 +386,8 @@ def lint(assembly: str) -> dict:
             for match in re.finditer(r"\b(CB|cb)(\d+)\b", line):
                 if opcode == "dcl_constantbuffer" and int(match.group(2)) != 0:
                     raise EffectError("only constant buffer b0 is allowed")
-            if opcode.startswith("dcl_resource") and not re.search(r"\bt[0-4]\b", line):
-                raise EffectError("only textures t0-t4 are allowed")
+            if opcode.startswith("dcl_resource") and not any(int(t) <= textures for t in re.findall(r"\bt(\d+)\b", line)):
+                raise EffectError(f"only textures t0-t{textures} are allowed")
             if opcode == "dcl_sampler" and not re.search(r"\bs[0-2]\b", line):
                 raise EffectError("only samplers s0-s2 are allowed")
             continue
@@ -266,9 +411,17 @@ def cost_class(ratio: float) -> str:
 
 
 # ---- manifest and container ------------------------------------------------------------------
+def interface_of(header: dict) -> int:
+    """3 for a pass graph or texture2/texture3; 2 when the effect reads mc_ambient (clock, appearance); else 1, so it
+    still runs on every client."""
+    if header.get("passes") or any(u in GRAPH_USES for u in header["uses"]):
+        return 3
+    return 2 if any(u in AMBIENT_USES for u in header["uses"]) else INTERFACE
+
+
 def manifest(slug: str, header: dict, sidecar: dict, meta: dict, version: str) -> dict:
     """The MANIFEST section, members in the order the client documents."""
-    result = {"interface": INTERFACE, "slug": slug, "name": meta["name"], "version": version,
+    result = {"interface": interface_of(header), "slug": slug, "name": meta["name"], "version": version,
               "authors": meta["authors"], "license": meta["license"]}
     if meta.get("derived_from"):
         result["derived_from"] = meta["derived_from"]
@@ -279,7 +432,26 @@ def manifest(slug: str, header: dict, sidecar: dict, meta: dict, version: str) -
     if "fps" in sidecar:
         result["fps"] = int(sidecar["fps"])
     result["knobs"] = header["knobs"]
+    graph = graph_of(header)
+    if graph:
+        result["targets"], result["passes"] = graph[0], graph[1]
     return result
+
+
+def graph_text(targets: list, passes: list, shaders: list, folder: Path, stem: str) -> str:
+    """The graph as effect_render reads it (--cso <file>.graph): one line per shader, target and pass."""
+    lines = [f"shader {profile[:2]} {folder / f'{stem}.{entry}.cso'}" for entry, profile in shaders]
+    for target in targets:
+        width, height = target.get("size", [0, 0])
+        lines.append(f"target {list(TEXEL_BYTES).index(target['format'])} {width} {height} {target.get('scale', 0)} "
+                     f"{int(target.get('persistent', False))}")
+    for item in passes:
+        grid = item.get("grid", [0, 0])
+        mask = sum(1 << i for i in item.get("inputs", []))
+        lines.append(f"pass {item.get('vs', -1)} {item['ps']} {item.get('target', -1)} {mask} "
+                     f"{PASS_BLENDS.index(item.get('blend', 'opaque'))} {grid[0]} {grid[1]} {item.get('quads', 0)} "
+                     f"{int(item.get('clear', False))}")
+    return "\n".join(lines) + "\n"
 
 
 def pack_mcfx(sections: dict) -> bytes:
@@ -334,9 +506,19 @@ def build_package(slug: str, directory: Path, meta: dict, version: str, include:
         if abs(have - expected) > 0.0015:
             raise EffectError(f"the sidecar's knobs differ from the @knob defaults at mc_knobs value {lane}: "
                               f"{have} against {expected:.4f}")
-    code, assembly = compile_effect(fxc, hlsl, include, work)
-    check_bytecode(code)
-    counts = lint(assembly)
+    graph = graph_of(header)
+    if graph and (json.loads(sidecar.get("targets", "[]")) != graph[0] or json.loads(sidecar.get("passes", "[]")) != graph[1]):
+        raise EffectError("the sidecar's targets or passes differ from the @target and @pass lines")
+    # Every shader is compiled and linted on its own; a graph's counts are summed for the log.
+    codes, counts = [], {"instructions": 0, "samples": 0}
+    for entry, profile in graph[2] if graph else [("main", "ps_5_0")]:
+        code, assembly = compile_effect(fxc, hlsl, include, work, entry, profile)
+        check_bytecode(code, profile)
+        for key, value in lint(assembly, 10 if interface_of(header) == 3 else 4).items():
+            counts[key] += value
+        codes.append(code)
+    if sum(map(len, codes[1:])) > SHADERS_MAX:
+        raise EffectError("the graph's shaders are too large")
     document = manifest(slug, header, sidecar, meta, version)
     text = json.dumps(document, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     if len(text) > MANIFEST_MAX:
@@ -344,6 +526,13 @@ def build_package(slug: str, directory: Path, meta: dict, version: str, include:
     source_bytes = source.encode("utf-8")
     if len(source_bytes) > SOURCE_MAX:
         raise EffectError("the source is too large")
-    package = pack_mcfx({"MANIFEST": text, "DXBC": code, "SOURCE": source_bytes})
-    return {"package": package, "header": header, "sidecar": sidecar, "code": code, "knob_values": values,
-            "lint": counts, "manifest": document}
+    sections = {"MANIFEST": text, "DXBC": codes[0], "SOURCE": source_bytes}
+    # What effect_render draws: the shader, or a graph file naming each pass's shaders.
+    render = work / f"{slug}.cso"
+    if graph:
+        sections["SHADERS"] = b"".join(codes[1:])
+        render = work / f"{slug}.graph"
+        render.write_text(graph_text(graph[0], graph[1], graph[2], work, hlsl.stem), encoding="utf-8")
+    package = pack_mcfx(sections)
+    return {"package": package, "header": header, "sidecar": sidecar, "code": codes[0], "knob_values": values,
+            "lint": counts, "manifest": document, "render": render}

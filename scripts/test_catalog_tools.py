@@ -83,6 +83,18 @@ class EffectTests(unittest.TestCase):
         with self.assertRaises(effects.EffectError):
             effects.pack_mcfx({"MANIFEST": b"{}"})
 
+    def test_ambient_inputs_are_interface_2_and_stay_out_of_the_index(self):
+        source = '// @effect name="X" license="MIT"\n// @blend normal\n// @uses blue_noise clock appearance\n'
+        header = effects.parse_header(source)
+        meta = {"name": "X", "authors": [{"name": "A"}], "license": "MIT"}
+        document = effects.manifest("x", header, {}, meta, "1.0.0")
+        self.assertEqual((document["interface"], document["uses"]), (2, ["blue_noise", "clock", "appearance"]))
+        plain = effects.manifest("x", effects.parse_header(source.replace(" clock appearance", "")), {}, meta, "1.0.0")
+        self.assertEqual(plain["interface"], 1, "an effect without them still runs on every client")
+        # The index reader of a format-2 client refuses unknown names: the index lists the old six only.
+        self.assertEqual(effects.INDEX_USES, ("noise", "glyphs", "blue_noise", "pointer", "texture0", "texture1"))
+        self.assertNotIn("clock", effects.INDEX_USES)
+
     def test_cost_classes(self):
         self.assertEqual([effects.cost_class(r) for r in (0.1, 0.5, 0.51, 1.5, 4.0)], ["light", "light", "medium", "medium", "heavy"])
         with self.assertRaises(effects.EffectError):
@@ -98,6 +110,47 @@ class EffectTests(unittest.TestCase):
                 effects.lint(bad)
         with self.assertRaises(effects.EffectError):
             effects.lint("sample_l r0.xyzw, r1.xy, t0.xyzw, s0, l(0)\n" * 65)
+        graph = "vs_5_0\ndcl_resource_texture2d (float,float,float,float) t10\nld r0.xyzw, v0.xyzw, t10.xyzw\nret\n"
+        self.assertEqual(effects.lint(graph, 10), {"instructions": 1, "samples": 1}, "interface 3 binds t0-t10")
+        with self.assertRaises(effects.EffectError):
+            effects.lint(graph)
+
+    GRAPH = ('// @effect name="X" license="MIT"\n// @blend normal\n'
+             '// @target parts rgba32f 32x32 persistent\n// @target glow rgba16f 50%\n'
+             '// @pass simulate to=parts in=parts\n// @pass ribbon vs=ribbon_vs grid=96x24 to=glow blend=add clear\n'
+             '// @pass compose in=glow\n// @pass spark vs=spark_vs quads=1024 in=parts blend=add\n')
+
+    def test_a_pass_graph_is_interface_3_with_the_clients_graph(self):
+        header = effects.parse_header(self.GRAPH)
+        meta = {"name": "X", "authors": [{"name": "A"}], "license": "MIT"}
+        document = effects.manifest("x", header, {}, meta, "1.0.0")
+        self.assertEqual(document["interface"], 3)
+        self.assertEqual(document["targets"], [{"format": "rgba32f", "size": [32, 32], "persistent": True},
+                                               {"format": "rgba16f", "scale": 50}])
+        self.assertEqual(document["passes"], [{"ps": 0, "target": 0, "inputs": [0]},
+                                              {"ps": 2, "vs": 1, "grid": [96, 24], "target": 1, "blend": "add", "clear": True},
+                                              {"ps": 3, "inputs": [1]},
+                                              {"ps": 5, "vs": 4, "quads": 1024, "inputs": [0], "blend": "add"}])
+        targets, passes, shaders = effects.graph_of(header)
+        self.assertEqual(shaders, [("simulate", "ps_5_0"), ("ribbon_vs", "vs_5_0"), ("ribbon", "ps_5_0"),
+                                   ("compose", "ps_5_0"), ("spark_vs", "vs_5_0"), ("spark", "ps_5_0")])
+        text = effects.graph_text(targets, passes, shaders, Path("w"), "x").splitlines()
+        self.assertEqual(text[1], f"shader vs {Path('w') / 'x.ribbon_vs.cso'}")
+        self.assertEqual(text[6:], ["target 2 32 32 0 1", "target 1 0 0 50 0", "pass -1 0 0 1 0 0 0 0 0",
+                                    "pass 1 2 1 0 2 96 24 0 1", "pass -1 3 -1 2 0 0 0 0 0", "pass 4 5 -1 1 2 0 0 1024 0"])
+        self.assertEqual(effects.interface_of(effects.parse_header('// @effect name="X" license="MIT"\n// @blend normal\n'
+                                                                   '// @uses texture2\n')), 3)
+        package = effects.pack_mcfx({"SHADERS": b"s", "DXBC": b"d", "MANIFEST": b"{}"})
+        self.assertEqual([struct.unpack_from("<I", package, 16 + 16 * i)[0] for i in range(3)], [1, 2, 9])
+
+    def test_graph_limits_are_the_clients(self):
+        good = '// @effect name="X" license="MIT"\n// @blend normal\n// @target a rgba16f 50%\n'
+        for text in ("// @pass p to=a\n", "// @pass p to=a in=a\n// @pass q\n", "// @pass p vs=v\n",
+                     "// @pass p vs=v grid=1x4\n", "// @pass p vs=v quads=16385\n", "// @pass p in=b\n", "// @pass p\n" * 7,
+                     "// @target b rgba32f 512x512 persistent\n// @target c rgba8 1x1\n// @pass p\n",
+                     "// @target b rgba32f 100% persistent\n// @pass p\n", "// @pass p vs=p quads=1\n"):
+            with self.assertRaises(effects.EffectError, msg=text):
+                effects.graph_of(effects.parse_header(good + text))
 
 
 class DetailsAndThemeTests(unittest.TestCase):
