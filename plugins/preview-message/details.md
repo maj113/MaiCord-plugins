@@ -1,4 +1,4 @@
-An eye button in the chat bar shows the text in your composer as a message only you can see, in the channel you have open, with a **Preview** card that says it isn't sent. Use it to check Markdown, mentions and line breaks before you send.
+An eye button in the chat bar shows the text in your composer as a message only you can see, in the channel you have open, marked like any ephemeral message: "Only you can see this • Dismiss message". Use it to check Markdown, mentions and line breaks before you send.
 
 ### Settings
 

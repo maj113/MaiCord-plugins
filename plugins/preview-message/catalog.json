@@ -11,5 +11,6 @@
     "chat",
     "utility"
   ],
-  "owner_id": "0x6D63707265766D67"
+  "owner_id": "0x6D63707265766D67",
+  "changelog": "The preview is a message only you can see, with MaiCord's Dismiss footer, instead of an extra card."
 }

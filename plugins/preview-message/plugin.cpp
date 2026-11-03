@@ -1,5 +1,6 @@
 // Preview Message: a chat-bar button that shows what you've typed as a message
-// only you can see, so you can check the formatting before you send it.
+// only you can see, so you can check the formatting before you send it. The
+// host shows it as an ephemeral message, whose footer says only you can see it.
 #include <maicord/sdk/plugin.hpp>
 using namespace mc;
 
@@ -30,11 +31,8 @@ MC_BUTTON(preview, surface::chat_bar, "Preview message", "lucide/eye") {
         return;
     }
     shown = {button.channel(), id};
-    Decoration note{};
-    note.card(card().title("Preview").caption("Only you can see this; it isn't sent.").tone(Tone::accent));
-    ctx.push_message(button.channel(), id, &note);
 }
 
-MC_PLUGIN(.owner = 0x6D63'7072'6576'6D67, .name = "Preview Message", .version = "1.0.0",
+MC_PLUGIN(.owner = 0x6D63'7072'6576'6D67, .name = "Preview Message", .version = "1.0.1",
           .summary = "Shows what you've typed as a message only you see.", .permissions = MC_PERM_COMPOSER,
           .api_level = 1);
