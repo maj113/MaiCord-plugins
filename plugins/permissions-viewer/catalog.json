@@ -11,5 +11,6 @@
     "moderation",
     "utility"
   ],
-  "owner_id": "0x6D637065726D7677"
+  "owner_id": "0x6D637065726D7677",
+  "changelog": "The permissions open as read-only text, one per line, with a single Close button instead of an editable box."
 }

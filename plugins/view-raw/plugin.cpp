@@ -5,11 +5,11 @@ using namespace mc;
 
 MC_SETTINGS((Choice, view, "Show", 0, .items = {"Message text", "Message details (JSON)"}));
 
-constexpr u32 kShown = 2000;  // what the box holds
+constexpr u32 kShown = 2000;  // what the dialog shows
 constexpr u32 kCopied = 4000; // what a copy can carry
 using Copy = Text<kCopied>;
 
-// What Copy puts on the clipboard: the whole text, of which the box may show only the start.
+// What Copy puts on the clipboard: the whole text, of which the dialog may show only the start.
 struct State {
     u32 bytes;
     char text[kCopied];
@@ -175,7 +175,7 @@ MC_BUTTON(view_raw, surface::message_popover, "View raw", "lucide/code") {
     while (shown < copy.size() && (static_cast<u8>(copy.data()[shown]) & 0xC0) == 0x80)
         --shown; // cut on a character boundary
     Modal modal{};
-    modal.flags = MC_MODAL_MULTILINE;
+    modal.flags = MC_MODAL_READ_ONLY; // shown, not edited: Copy takes the text
     modal.has_input = 1;
     modal.title = json ? Str("Message details") : Str("Raw message");
     if (shown < copy.size())
@@ -188,5 +188,5 @@ MC_BUTTON(view_raw, surface::message_popover, "View raw", "lucide/code") {
         ctx.toast("Couldn't open the viewer", Tone::warning);
 }
 
-MC_PLUGIN(.owner = 0x6D63'7669'6577'7277, .name = "View Raw", .version = "1.0.0",
-          .summary = "Shows a message's raw text or details and copies them.", .permissions = MC_PERM_CLIPBOARD, .api_level = 1);
+MC_PLUGIN(.owner = 0x6D63'7669'6577'7277, .name = "View Raw", .version = "1.1.0",
+          .summary = "Shows a message's raw text or details and copies them.", .permissions = MC_PERM_CLIPBOARD, .api_level = 3);

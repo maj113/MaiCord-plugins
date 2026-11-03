@@ -11,5 +11,6 @@
     "developer",
     "utility"
   ],
-  "owner_id": "0x6D63766965777277"
+  "owner_id": "0x6D63766965777277",
+  "changelog": "The text opens as read-only text instead of an editable box."
 }
