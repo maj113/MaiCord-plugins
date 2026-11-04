@@ -16,7 +16,7 @@
     "author": "linkev (Mart): the earlier port and the inspiration",
     "license": "MIT"
   },
-  "version": "1.0.0",
+  "version": "1.1.0",
   "preview_alt": "A soft grey ribbon of folded translucent layers crossing a night sky that is black at the top and glows deep blue toward the bottom, with tiny glinting flakes around the ribbon.",
-  "changelog": "First release: a simulated cloth ribbon whose folds glow, flakes that glint as they spin, and colours that follow the month and the time of day. Needs a MaiCord with pass graphs."
+  "changelog": "Following the clock no longer shows the light day sky under a dark theme: the sky turns to night whenever the appearance is dark. \"Day\" is now \"Day (light themes)\". With the Silk Waves theme, the sky follows its day and night."
 }

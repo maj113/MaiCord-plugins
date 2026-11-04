@@ -7,7 +7,7 @@ It needs a MaiCord that draws pass graphs (effects interface 3); an older one do
 ## Knobs
 
 - **Month**: follow the date (each month's colours turn slowly toward the next month's from the 5th), or one month.
-- **Day and night**: follow the clock; the clock, but night whenever the appearance is dark (the default, so text stays readable over a dark theme); always day; always night.
+- **Day and night**: follow the clock (the sky turns to night whenever the appearance is dark, so the light day sky never sits under a dark theme's text); the clock, but the whole look at night whenever the appearance is dark (the default); always day, for light themes; always night. With the Silk Waves theme, which turns light by day and dark at night, the sky follows it.
 - **Wave speed**: 1 is the natural pace, a wave about every 21 seconds.
 - **Wave brightness**, **Glitter** and **Glare**: 1 is the intended level.
 
