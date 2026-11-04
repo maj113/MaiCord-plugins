@@ -23,7 +23,7 @@ The state target holds everything that lives from frame to frame:
 | 19-37 | 0-18 | node velocities, and the wave clock t in w |
 | 38-56 | 0-18 | the surface's control points now, and the edge's lagging clock in w |
 | 57-75 | 0-18 | the control points a frame ago, and the 60 Hz steps between in w |
-| 76 | 0-5 | the time of day's mood, worked out once a frame |
+| 76 | 0-5 | the time of day's mood, gliding toward what it is now |
 | 77-108 | 0-63 | each flake's place and age |
 | 109-140 | 0-63 | its velocity and ageing rate |
 | 141-172 | 0-63 | its orientation (a quaternion) |
@@ -176,7 +176,12 @@ Four presets, held around keyframes and blended with smoothsteps:
 Following the clock ("Clock"), a dark appearance pulls the sky toward night, so the light day picture never sits under
 a dark theme's text; with "Night when dark" it pulls the weights too. "Day" (for light themes) and "Night" hold their
 time whatever the appearance. The state pass works
-the mood (and the month's colours) out once a frame into row 76; every later pass reads it there.
+the mood (and the month's colours) out once a frame and keeps it in row 76; every later pass reads it there.
+
+The kept mood glides: each frame it moves a share `1 − exp(−delta / 0.25)` of the way to the mood worked out now, so
+a new month or day and night, an appearance change and the phases turn over about a second (95 % in 0.75 s) while
+the ribbon keeps moving. The cloth's control points use the same glided mood, so the shape and the shading agree. A
+new target and a frame that takes no time (the effect is paused, or drawn again still) take the mood whole.
 
 ## The glitter
 

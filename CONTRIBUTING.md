@@ -158,9 +158,10 @@ A theme can follow the clock and the month, as `themes/silk-waves` does, with a
   gives, for each of its options in order, `"auto"` (the theme's own
   schedule) or the phase it holds (`"night"`, `"dawn"`, `"day"` or `"dusk"`,
   shown whole with its base). MaiCord follows them only while that effect is
-  the window's background, with the user's own values; the change glides like
-  a jump of the clock. The effect needs no change, and a MaiCord before 0.6.5
-  skips `follow` and keeps the schedule, so the theme stays `"interface": 2`.
+  the window's background, with the user's own values; the change glides over
+  0.6 seconds, as any theme change the user makes. The effect needs no change,
+  and a MaiCord before 0.6.5 skips `follow` and keeps the schedule, so the
+  theme stays `"interface": 2`.
   The build checks that the knobs exist in the effect's `@knob` lines with
   those option counts (`check_follow` in `scripts/build_catalog.py`).
 

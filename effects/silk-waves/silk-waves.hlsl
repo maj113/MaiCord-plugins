@@ -12,7 +12,7 @@
 // spinning), flash when their spin turns them toward a light. The look follows the time of day.
 // Credit: linkev's PlayStation-3-XMB (MIT) was the earlier port and the inspiration; this one shares no code with it.
 //
-// @effect   name="Silk Waves" authors="MaiCord" license="MIT" version="1.2.0" derived_from="https://github.com/linkev/PlayStation-3-XMB|linkev (Mart)|MIT"
+// @effect   name="Silk Waves" authors="MaiCord" license="MIT" version="1.3.0" derived_from="https://github.com/linkev/PlayStation-3-XMB|linkev (Mart)|MIT"
 // @knob month   choice "By date|January|February|March|April|May|June|July|August|September|October|November|December" = 0 "Month"
 // @knob sky     choice "Clock|Night when dark|Day|Night" = 1 "Day and night"
 // @knob speed   float 0..3 = 1 "Wave speed"
@@ -182,24 +182,43 @@ float3 month_colour(uint which) {
 }
 
 // The state pass works the mood out once a frame into the last row of the cloth's block (texels 0-5); every later
-// pass reads it there.
+// pass reads it there. The stored mood glides toward the one worked out now, a share 1 - exp(-delta / 0.25) of the
+// way each frame, so a change of month, of day and night, of appearance or of the time of day's phase turns over
+// about a second while the ribbon keeps moving. A new target, and a frame that takes no time (the effect is paused,
+// or drawn again still), take the mood whole.
 static const uint kMoodRow = 76;
+static const float kMoodGlide = 0.25;                  // seconds
 float4 mood_texel(Mood m, uint index) {
     return index == 0 ? float4(m.brightness, m.sheen, m.density, m.exposure)
          : index == 1 ? float4(m.white, m.turn, m.flake, m.flare)
          : index == 2 ? float4(m.scale.yz, m.sky, m.sun.x)
          : float4(month_colour(min(index, 5u) - 3u), index == 3 ? m.sun.y : 0.0);
 }
-Mood stored_mood() {
-    float4 v[6];
-    [unroll] for (int i = 0; i < 6; ++i)
-        v[i] = mc_target0.Load(int3(i, kMoodRow, 0));
+Mood unpack_mood(float4 v[6]) {
     Mood m;
     m.brightness = v[0].x; m.sheen = v[0].y; m.density = v[0].z; m.exposure = v[0].w;
     m.white = v[1].x; m.turn = v[1].y; m.flake = v[1].z; m.flare = v[1].w;
     m.scale = float3(3.2, v[2].xy); m.sky = v[2].z; m.sun = float2(v[2].w, v[3].w);
     m.top = v[3].xyz; m.bottom = v[4].xyz; m.glow = v[5].xyz;
     return m;
+}
+Mood stored_mood() {
+    float4 v[6];
+    [unroll] for (uint i = 0; i < 6; ++i)
+        v[i] = mc_target0.Load(int3(i, kMoodRow, 0));
+    return unpack_mood(v);
+}
+// The state pass's view of a texel of the mood this frame (`fresh`: a new target).
+float4 glided_texel(Mood target, uint index, bool fresh) {
+    const float4 to = mood_texel(target, index);
+    return fresh || mc.delta <= 0.0 ? to : lerp(mc_target0.Load(int3(index, kMoodRow, 0)), to, 1.0 - exp(-mc.delta / kMoodGlide));
+}
+Mood glided_mood(bool fresh) {
+    const Mood target = mood();
+    float4 v[6];
+    [unroll] for (uint i = 0; i < 6; ++i)
+        v[i] = glided_texel(target, i, fresh);
+    return unpack_mood(v);
 }
 
 // ---- the deformation and the camera ------------------------------------------------------------------------------
@@ -550,7 +569,7 @@ float4 state(float4 position : SV_Position) : SV_Target {
     float4 value = 0.0;
     [branch] if (texel.y == kMoodRow) {
         if (texel.x < 6u)
-            value = mood_texel(mood(), texel.x);
+            value = glided_texel(mood(), texel.x, fresh);
     } else if (!flake && texel.x >= 19u) {
         // Unused.
     } else if (!flake && block == 3 && !fresh) {
@@ -589,7 +608,7 @@ float4 state(float4 position : SV_Position) : SV_Target {
                 control = true;
             }
         }
-        const Mood m = mood();
+        const Mood m = glided_mood(fresh);
         float3 node = 0.0, velocity = 0.0, now = 0.0, before = 0.0, row_ = 0.0;
         float t = 0.0, lag = 0.0;
         [loop] for (int i = 0; i < count; ++i) {
