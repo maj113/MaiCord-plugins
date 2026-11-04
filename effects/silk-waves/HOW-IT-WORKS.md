@@ -173,8 +173,8 @@ Four presets, held around keyframes and blended with smoothsteps:
 | Scale y | 1.2 | 1.275 | 1.275 | 1.2 |
 | Scale z | 3.0 | 2.89 | 2.89 | 3.0 |
 
-Following the clock, a dark appearance pulls the sky toward night, so the light day picture never sits under a dark
-theme's text; with "Clock, night when dark" it pulls the weights too. "Day (light themes)" and "Night" hold their
+Following the clock ("Clock"), a dark appearance pulls the sky toward night, so the light day picture never sits under
+a dark theme's text; with "Night when dark" it pulls the weights too. "Day" (for light themes) and "Night" hold their
 time whatever the appearance. The state pass works
 the mood (and the month's colours) out once a frame into row 76; every later pass reads it there.
 

@@ -20,4 +20,4 @@ Text reaches at least 7.9:1 and muted text at least 4.9:1 on every surface, in e
 
 ## Older MaiCord
 
-It needs MaiCord 0.6.4 or later; earlier versions don't list it. A MaiCord before 0.6.4 that imports the file by hand shows its night look, in October's colours, all day.
+It needs MaiCord 0.6.4 or later; earlier versions don't list it. A MaiCord before 0.6.4 that imports the file by hand shows its night look, in October's colours, all day. Following the effect's knobs needs MaiCord 0.6.5; 0.6.4 keeps the theme on its own schedule.

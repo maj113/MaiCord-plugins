@@ -18,7 +18,7 @@ Colour themes for MaiCord. The catalog lists them: they appear on MaiCord's Them
 Each theme has its own folder named by its slug:
 
 - `catalog.json` and `details.md`: what the catalog shows (see the [repository README](../README.md#layout)).
-- `theme.json`: a MaiCord theme document (`"version": "2.0"`, 64 KiB at most). It's the same format as `assets/themes/example.maicord-theme.json` in the client repository, which lists every token.
+- `theme.json`: a MaiCord theme document (`"version": "2.0"`, 64 KiB at most). It's the same format as `assets/themes/example.maicord-theme.json` in the client repository, which lists every token. A theme that changes with the time of day can also follow knobs of its effect (`background.follow`, see the [contributing guide](../CONTRIBUTING.md#a-theme-that-changes-with-the-time-of-day)): Silk Waves holds the month or the day or night you pick on the effect's knob page.
 - `preview.png`: the main chat view at 1x (1440×900), rendered by MaiCord's own renderer.
 - `README.md`: name, author, license, description and the contrast figures.
 

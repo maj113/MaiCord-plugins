@@ -12,9 +12,9 @@
 // spinning), flash when their spin turns them toward a light. The look follows the time of day.
 // Credit: linkev's PlayStation-3-XMB (MIT) was the earlier port and the inspiration; this one shares no code with it.
 //
-// @effect   name="Silk Waves" authors="MaiCord" license="MIT" version="1.1.0" derived_from="https://github.com/linkev/PlayStation-3-XMB|linkev (Mart)|MIT"
-// @knob month   choice "Follow the date|January|February|March|April|May|June|July|August|September|October|November|December" = 0 "Month"
-// @knob sky     choice "Follow the clock|Clock, night when dark|Day (light themes)|Night" = 1 "Day and night"
+// @effect   name="Silk Waves" authors="MaiCord" license="MIT" version="1.2.0" derived_from="https://github.com/linkev/PlayStation-3-XMB|linkev (Mart)|MIT"
+// @knob month   choice "By date|January|February|March|April|May|June|July|August|September|October|November|December" = 0 "Month"
+// @knob sky     choice "Clock|Night when dark|Day|Night" = 1 "Day and night"
 // @knob speed   float 0..3 = 1 "Wave speed"
 // @knob waves   float 0..2 = 1 "Wave brightness"
 // @knob glitter float 0..2 = 1 "Glitter"
@@ -148,7 +148,7 @@ Mood mood() {
     // The light follows the sun on that clock: none before 5:30 or after 18:30.
     m.sun = float2(pow(saturate(sin((hour - 5.5) * kPi / 13.0)), 0.8), (hour - 6.0) / 12.0);
     // The day picture is light: under a dark appearance's text, following the clock shows the night sky instead.
-    // "Clock, night when dark" turns the whole mood to night with it; "Day (light themes)" and "Night" are as chosen.
+    // "Night when dark" turns the whole mood to night with it; "Day" and "Night" are as chosen.
     if (knob_sky <= 1)
         m.sky = max(m.sky, mc_ambient.dark);
     if (knob_sky == 1)

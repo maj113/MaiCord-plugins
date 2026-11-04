@@ -208,6 +208,19 @@ class DetailsAndThemeTests(unittest.TestCase):
             build_catalog.variant_looks(document, "t")
         self.assertEqual(build_catalog.mix_colour("#000000", "#ff8040", .5), "#804020")
 
+    def test_follow_names_choice_knobs_of_the_themes_effect(self):
+        document = json.loads((ROOT / "themes" / "silk-waves" / "theme.json").read_text(encoding="utf-8"))
+        background = document["background"]
+        self.assertEqual(background["follow"], {"month": "month", "phase": "sky", "phases": ["auto", "auto", "day", "night"]})
+        build_catalog.check_follow(background, "silk-waves")
+        for follow in ({"month": "speed"}, {"month": "sky"}, {"phase": "sky", "phases": ["auto", "day"]},
+                       {"phase": "sky", "phases": ["auto", "auto", "noon", "night"]}, {"phase": "sky"},
+                       {"phases": ["day"]}, {"month": "month", "hour": "x"}):
+            with self.assertRaisesRegex(build_catalog.BuildError, "follow", msg=str(follow)):
+                build_catalog.check_follow(dict(background, follow=follow), "t")
+        with self.assertRaisesRegex(build_catalog.BuildError, "follow"):
+            build_catalog.check_follow({"effect": "starfield", "follow": {"month": "month"}}, "t")
+
 
 class PolicyTests(unittest.TestCase):
     def test_refused_permissions_fail_the_build(self):

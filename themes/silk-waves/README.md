@@ -18,6 +18,8 @@ Follows the Silk Waves sky through the day and the year: near-black with the mon
 
 `theme.json` holds four phases in `variants`, each with a base and, for every month, its surfaces, controls, accent and text. MaiCord follows the Silk Waves schedule: each phase is held around its hours (night 23:00 to 01:00, dawn 05:00 to 07:00, day 11:00 to 13:00, dusk 17:00 to 19:00) and the next one takes over on a smoothstep across the four hours between. Night and dawn are dark, day and dusk light, so the theme turns light at 09:00 and dark at 21:00; there the nearer phase shows whole and the change glides over 1.5 seconds. While the theme is on, the Silk Waves effect's appearance follows it, not Windows, so its day sky shows under the light phases.
 
+While the Silk Waves effect is your background, the theme follows its knobs (`background.follow` in `theme.json`): a month picked under **Month** holds that month's colours, **Day** holds the light day phase and **Night** the dark night phase, and **Clock** or **Night when dark** keep the schedule. A change glides like the schedule's own. With another background, or on a MaiCord that doesn't know `follow`, the theme keeps its schedule.
+
 Each month's colours hold until the 5th and then turn toward the next month's, reaching them at the month's end, as the Silk Waves sky does. The root `colors` are October's night: what a MaiCord without variants shows.
 
 ## Colours

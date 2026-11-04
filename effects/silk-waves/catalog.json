@@ -16,7 +16,7 @@
     "author": "linkev (Mart): the earlier port and the inspiration",
     "license": "MIT"
   },
-  "version": "1.1.0",
+  "version": "1.2.0",
   "preview_alt": "A soft grey ribbon of folded translucent layers crossing a night sky that is black at the top and glows deep blue toward the bottom, with tiny glinting flakes around the ribbon.",
-  "changelog": "Following the clock no longer shows the light day sky under a dark theme: the sky turns to night whenever the appearance is dark. \"Day\" is now \"Day (light themes)\". With the Silk Waves theme, the sky follows its day and night."
+  "changelog": "Shorter choices that fit the knob page: Month is \"By date\" or a month, Day and night is \"Clock\", \"Night when dark\", \"Day\" or \"Night\". With the Silk Waves theme, a month or a day or night you pick here holds the theme on it too."
 }

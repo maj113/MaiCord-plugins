@@ -3,7 +3,7 @@
   "name": "Silk Waves",
   "base": "dark",
   "colors": {"base_lowest": "#090807", "base_lower": "#0f0d0b", "base_low": "#14120f", "surface": "#1a1814", "surface_high": "#221e1a", "interactive": "#332e27", "interactive_hover": "#403a30", "accent": "#9c6008", "text_primary": "#f2ede6", "text_secondary": "#bdb7ae"},
-  "background": {"effect": "silk-waves"},
+  "background": {"effect": "silk-waves", "follow": {"month": "month", "phase": "sky", "phases": ["auto", "auto", "day", "night"]}},
   "variants": {
     "night": {
       "base": "dark",

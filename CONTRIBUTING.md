@@ -145,6 +145,24 @@ A theme can follow the clock and the month, as `themes/silk-waves` does, with a
   text 4.5:1 and muted text 3:1 on all five surfaces, the accent 3:1 on the
   chat and sidebar. `scripts/build_catalog.py`'s `variant_looks` lists what it
   checks.
+- A theme can follow knobs of the effect it asks for, so that overriding them
+  on the effect's knob page moves the theme too, as `themes/silk-waves` does:
+
+  ```json
+  "background": {"effect": "silk-waves",
+                 "follow": {"month": "month", "phase": "sky", "phases": ["auto", "auto", "day", "night"]}}
+  ```
+
+  `month` names a choice knob of 13 options: the first follows the date, the
+  others hold January to December. `phase` names a choice knob, and `phases`
+  gives, for each of its options in order, `"auto"` (the theme's own
+  schedule) or the phase it holds (`"night"`, `"dawn"`, `"day"` or `"dusk"`,
+  shown whole with its base). MaiCord follows them only while that effect is
+  the window's background, with the user's own values; the change glides like
+  a jump of the clock. The effect needs no change, and a MaiCord before 0.6.5
+  skips `follow` and keeps the schedule, so the theme stays `"interface": 2`.
+  The build checks that the knobs exist in the effect's `@knob` lines with
+  those option counts (`check_follow` in `scripts/build_catalog.py`).
 
 ## An effect
 
@@ -170,7 +188,10 @@ An effect is one HLSL pixel shader plus a sidecar; it runs on the GPU only.
    interface 3, and CI measures and previews the whole graph. The catalog
    lists an interface-2 or interface-3 effect for MaiCord 0.6.3 and later
    only: `index.json`, which 0.6.0 to 0.6.2 read, leaves it out (see
-   [the indexes](#the-indexes)).
+   [the indexes](#the-indexes)). Keep each `choice` entry to a word or two
+   ("Clock", "Day", "Night"): the knob page shows a choice as a row of buttons
+   as wide as their labels while they fit the card, and as a dropdown when
+   they don't.
 3. **Build it:** `maicord-plugin effect build` compiles, lints (constant buffer
    `b0`, textures `t0-t4` or `t0-t10` for a graph, samplers `s0-s2`, no UAVs,
    at most 4,096 instructions and 64 texture reads per shader) and writes

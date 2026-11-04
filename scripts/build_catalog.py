@@ -427,6 +427,25 @@ def check_variant_contrast(document: dict, slug: str) -> None:
                     raise BuildError(f"theme {slug}: {name} on {surface} is below {minimum}:1 at {where}")
 
 
+def check_follow(background: dict, slug: str, root: Path = ROOT) -> None:
+    """`background.follow` names choice knobs of the theme's own catalog effect: `month` one of 13 options ("by date",
+    then January to December), `phase` one with a `phases` entry ("auto" or a phase) for each of its options."""
+    follow, effect = background["follow"], background.get("effect")
+    path = root / "effects" / str(effect) / f"{effect}.hlsl"
+    if not isinstance(follow, dict) or not set(follow) <= {"month", "phase", "phases"} or not path.is_file():
+        raise BuildError(f"theme {slug}: background.follow holds month, phase and phases of the catalog effect it names")
+    knobs = {knob["id"]: knob for knob in effects.parse_header(path.read_text(encoding="utf-8"))["knobs"]}
+    month, phase = knobs.get(follow.get("month")), knobs.get(follow.get("phase"))
+    if "month" in follow and not (month and month["type"] == "choice" and len(month["choices"]) == 13):
+        raise BuildError(f"theme {slug}: follow.month names a choice knob of {effect} with 13 options")
+    phases = follow.get("phases", [])
+    if ("phase" in follow) != ("phases" in follow) or "phase" in follow and not (
+            phase and phase["type"] == "choice" and isinstance(phases, list) and len(phases) == len(phase["choices"])
+            and all(name in ("auto",) + PHASES for name in phases)):
+        raise BuildError(f"theme {slug}: follow.phase names a choice knob of {effect} and phases maps each of its "
+                         f"options to auto, night, dawn, day or dusk")
+
+
 def theme_item(site: Site, slug: str, directory: Path, meta: dict, ctx: dict) -> dict:
     path = directory / "theme.json"
     data = path.read_bytes().replace(b"\r\n", b"\n")  # the repository stores LF; a CRLF checkout must hash the same
@@ -445,6 +464,10 @@ def theme_item(site: Site, slug: str, directory: Path, meta: dict, ctx: dict) ->
     background = document.get("background")
     if background is not None and meta.get("effect") not in (None, background.get("effect")):
         raise BuildError(f"theme {slug}: catalog.json effect and theme.json background.effect differ")
+    # The knobs of its effect a theme with variants follows; an older MaiCord skips the member and keeps the schedule,
+    # so it needs no newer interface.
+    if background is not None and "follow" in background:
+        check_follow(background, slug)
     preview = (directory / "preview.png").read_bytes()
     width, height = png_size(preview, f"theme {slug} preview.png")
     # A theme that changes with the time of day needs MaiCord's theme interface 2.
