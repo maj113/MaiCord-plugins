@@ -1,0 +1,17 @@
+{
+  "name": "Silk Waves",
+  "summary": "Follows the Silk Waves sky through the day and the year: near-black with the month's glow at night, soft month-tinted light by day, turning light and dark on its own.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "ambient",
+    "dynamic"
+  ],
+  "version": "1.0.0",
+  "effect": "silk-waves",
+  "preview_alt": "Silk Waves at midday in October, in the main chat view: dark text over Silk Waves' amber day sky and its glowing ribbon, with light cards and an amber accent."
+}

@@ -1,0 +1,81 @@
+{
+  "version": "2.0",
+  "name": "Silk Waves",
+  "base": "dark",
+  "colors": {"base_lowest": "#090807", "base_lower": "#0f0d0b", "base_low": "#14120f", "surface": "#1a1814", "surface_high": "#221e1a", "interactive": "#332e27", "interactive_hover": "#403a30", "accent": "#9c6008", "text_primary": "#f2ede6", "text_secondary": "#bdb7ae"},
+  "background": {"effect": "silk-waves"},
+  "variants": {
+    "night": {
+      "base": "dark",
+      "colors": {"base_lowest": "#090909", "base_lower": "#0f0f0f", "base_low": "#141414", "surface": "#1a1a1a", "surface_high": "#222222", "interactive": "#333333", "interactive_hover": "#404040", "accent": "#99612e", "text_primary": "#f2f2f2", "text_secondary": "#bdbdbd"},
+      "months": [
+        {"base_lowest": "#080809", "base_lower": "#0e0e0f", "base_low": "#121314", "surface": "#18191a", "surface_high": "#1f2022", "interactive": "#2f3033", "interactive_hover": "#3b3c40", "accent": "#556caa", "text_primary": "#e6e9f2", "text_secondary": "#aeb2bd"},
+        {"base_lowest": "#090807", "base_lower": "#0f0e0b", "base_low": "#14130f", "surface": "#1a1814", "surface_high": "#22201a", "interactive": "#333027", "interactive_hover": "#403c30", "accent": "#836b24", "text_primary": "#f2efe6", "text_secondary": "#bdb9ae"},
+        {"base_lowest": "#080907", "base_lower": "#0d0f0b", "base_low": "#12140f", "surface": "#171a14", "surface_high": "#1e221a", "interactive": "#2d3327", "interactive_hover": "#384030", "accent": "#53782d", "text_primary": "#ecf2e6", "text_secondary": "#b5bdae"},
+        {"base_lowest": "#090708", "base_lower": "#0f0c0d", "base_low": "#141012", "surface": "#1a1517", "surface_high": "#221c1e", "interactive": "#332a2d", "interactive_hover": "#403439", "accent": "#a65372", "text_primary": "#f2e6eb", "text_secondary": "#bdaeb3"},
+        {"base_lowest": "#070907", "base_lower": "#0b0f0c", "base_low": "#0f1411", "surface": "#141a16", "surface_high": "#1a221c", "interactive": "#27332b", "interactive_hover": "#304035", "accent": "#2c7c46", "text_primary": "#e6f2ea", "text_secondary": "#aebdb3"},
+        {"base_lowest": "#080709", "base_lower": "#0d0c0f", "base_low": "#121014", "surface": "#17151a", "surface_high": "#1e1b22", "interactive": "#2d2933", "interactive_hover": "#383440", "accent": "#805bb7", "text_primary": "#ebe6f2", "text_secondary": "#b4aebd"},
+        {"base_lowest": "#070909", "base_lower": "#0b0f0f", "base_low": "#0f1414", "surface": "#141a1a", "surface_high": "#1a2122", "interactive": "#273333", "interactive_hover": "#303f40", "accent": "#167a7d", "text_primary": "#e6f2f2", "text_secondary": "#aebcbd"},
+        {"base_lowest": "#070809", "base_lower": "#0b0d0f", "base_low": "#0f1114", "surface": "#14161a", "surface_high": "#1a1d22", "interactive": "#272c33", "interactive_hover": "#303640", "accent": "#2269d9", "text_primary": "#e6ebf2", "text_secondary": "#aeb3bd"},
+        {"base_lowest": "#090709", "base_lower": "#0e0b0f", "base_low": "#130f14", "surface": "#19141a", "surface_high": "#201a22", "interactive": "#312733", "interactive_hover": "#3d3040", "accent": "#ae30cc", "text_primary": "#f0e6f2", "text_secondary": "#baaebd"},
+        {"base_lowest": "#090807", "base_lower": "#0f0d0b", "base_low": "#14120f", "surface": "#1a1814", "surface_high": "#221e1a", "interactive": "#332e27", "interactive_hover": "#403a30", "accent": "#9c6008", "text_primary": "#f2ede6", "text_secondary": "#bdb7ae"},
+        {"base_lowest": "#090807", "base_lower": "#0f0d0b", "base_low": "#14120f", "surface": "#1a1714", "surface_high": "#221e1a", "interactive": "#332d27", "interactive_hover": "#403930", "accent": "#9d5f18", "text_primary": "#f2ede6", "text_secondary": "#bdb6ae"},
+        {"base_lowest": "#090707", "base_lower": "#0f0b0b", "base_low": "#140f0f", "surface": "#1a1414", "surface_high": "#221a1a", "interactive": "#332827", "interactive_hover": "#403230", "accent": "#ca372c", "text_primary": "#f2e7e6", "text_secondary": "#bdafae"}
+      ]
+    },
+    "dawn": {
+      "base": "dark",
+      "colors": {"base_lowest": "#121212", "base_lower": "#191919", "base_low": "#1f1f1f", "surface": "#272727", "surface_high": "#303030", "interactive": "#454545", "interactive_hover": "#545454", "accent": "#a96243", "text_primary": "#f2f2f2", "text_secondary": "#bdbdbd"},
+      "months": [
+        {"base_lowest": "#111112", "base_lower": "#181819", "base_low": "#1d1e1f", "surface": "#252527", "surface_high": "#2e2f30", "interactive": "#414245", "interactive_hover": "#505154", "accent": "#5773af", "text_primary": "#e4e8f2", "text_secondary": "#abb0bd"},
+        {"base_lowest": "#12100c", "base_lower": "#191711", "base_low": "#1f1d15", "surface": "#27241b", "surface_high": "#302d21", "interactive": "#45402f", "interactive_hover": "#544e3a", "accent": "#8e7114", "text_primary": "#f2efe4", "text_secondary": "#bdb8ab"},
+        {"base_lowest": "#0f120c", "base_lower": "#151911", "base_low": "#1a1f16", "surface": "#20271b", "surface_high": "#293022", "interactive": "#3a4530", "interactive_hover": "#46543a", "accent": "#4f8125", "text_primary": "#ebf2e4", "text_secondary": "#b3bdab"},
+        {"base_lowest": "#120e0f", "base_lower": "#191415", "base_low": "#1f181b", "surface": "#271e21", "surface_high": "#30262a", "interactive": "#45363b", "interactive_hover": "#544248", "accent": "#b25677", "text_primary": "#f2e4e9", "text_secondary": "#bdabb1"},
+        {"base_lowest": "#0c120e", "base_lower": "#111914", "base_low": "#151f18", "surface": "#1b271e", "surface_high": "#213026", "interactive": "#2f4536", "interactive_hover": "#3a5442", "accent": "#22853f", "text_primary": "#e4f2e8", "text_secondary": "#abbdb0"},
+        {"base_lowest": "#0f0e12", "base_lower": "#151319", "base_low": "#1b181f", "surface": "#211e27", "surface_high": "#292530", "interactive": "#3b3545", "interactive_hover": "#484054", "accent": "#895ccf", "text_primary": "#e9e4f2", "text_secondary": "#b2abbd"},
+        {"base_lowest": "#0c1212", "base_lower": "#111919", "base_low": "#151f1f", "surface": "#1b2727", "surface_high": "#213030", "interactive": "#2f4545", "interactive_hover": "#3a5454", "accent": "#0e8181", "text_primary": "#e4f2f2", "text_secondary": "#abbdbd"},
+        {"base_lowest": "#0c0e12", "base_lower": "#111419", "base_low": "#15181f", "surface": "#1b1f27", "surface_high": "#212630", "interactive": "#2f3645", "interactive_hover": "#3a4254", "accent": "#2a66ff", "text_primary": "#e4e8f2", "text_secondary": "#abb0bd"},
+        {"base_lowest": "#110c12", "base_lower": "#181119", "base_low": "#1d151f", "surface": "#241b27", "surface_high": "#2e2130", "interactive": "#412f45", "interactive_hover": "#4f3a54", "accent": "#b639d2", "text_primary": "#f0e4f2", "text_secondary": "#b9abbd"},
+        {"base_lowest": "#12100c", "base_lower": "#191611", "base_low": "#1f1b15", "surface": "#27221b", "surface_high": "#302a21", "interactive": "#453c2f", "interactive_hover": "#54493a", "accent": "#a7650a", "text_primary": "#f2ece4", "text_secondary": "#bdb5ab"},
+        {"base_lowest": "#120f0c", "base_lower": "#191511", "base_low": "#1f1b15", "surface": "#27211b", "surface_high": "#302921", "interactive": "#453b2f", "interactive_hover": "#54483a", "accent": "#9d6930", "text_primary": "#f2ebe4", "text_secondary": "#bdb4ab"},
+        {"base_lowest": "#120d0c", "base_lower": "#191211", "base_low": "#1f1615", "surface": "#271b1b", "surface_high": "#302221", "interactive": "#45312f", "interactive_hover": "#543b3a", "accent": "#db3227", "text_primary": "#f2e5e4", "text_secondary": "#bdacab"}
+      ]
+    },
+    "day": {
+      "base": "light",
+      "colors": {"base_lowest": "#f0f1f4", "base_lower": "#f6f7f9", "base_low": "#fafafb", "surface": "#fcfdfd", "surface_high": "#f3f4f7", "interactive": "#ebedf1", "interactive_hover": "#e7e9ee", "accent": "#40669f", "text_primary": "#1c1d1e", "text_secondary": "#5b5d62", "notification": "#d93030"},
+      "months": [
+        {"base_lowest": "#f4f5f6", "base_lower": "#f9f9fa", "base_low": "#fbfcfc", "surface": "#fdfdfe", "surface_high": "#f6f7f8", "interactive": "#f0f1f3", "interactive_hover": "#edeef1", "accent": "#48649f", "text_primary": "#1c1d1d", "text_secondary": "#5c5d60", "notification": "#d93030"},
+        {"base_lowest": "#f8f1d2", "base_lower": "#fbf7e6", "base_low": "#fdfaf0", "surface": "#fefdf8", "surface_high": "#faf4dd", "interactive": "#f6ecc3", "interactive_hover": "#f4e8b8", "accent": "#7b6212", "text_primary": "#1f1d14", "text_secondary": "#655d3d", "notification": "#d93030"},
+        {"base_lowest": "#e4f1d0", "base_lower": "#f0f7e4", "base_low": "#f6faef", "surface": "#fbfdf7", "surface_high": "#ebf4db", "interactive": "#dbecc0", "interactive_hover": "#d4e8b4", "accent": "#457020", "text_primary": "#1a1e14", "text_secondary": "#54623b", "notification": "#d93030"},
+        {"base_lowest": "#fae5eb", "base_lower": "#fcf0f4", "base_low": "#fdf6f8", "surface": "#fefbfc", "surface_high": "#fcebf0", "interactive": "#f9dce5", "interactive_hover": "#f8d5e0", "accent": "#a04867", "text_primary": "#251a1d", "text_secondary": "#77535e", "notification": "#d93030"},
+        {"base_lowest": "#cfead5", "base_lower": "#e4f3e7", "base_low": "#eff8f1", "surface": "#f7fbf8", "surface_high": "#daefdf", "interactive": "#bfe3c7", "interactive_hover": "#b2ddbc", "accent": "#1e7437", "text_primary": "#141f17", "text_secondary": "#3d6647", "notification": "#d93030"},
+        {"base_lowest": "#ebe0f6", "base_lower": "#f4edfa", "base_low": "#f8f5fc", "surface": "#fcfafd", "surface_high": "#f0e7f8", "interactive": "#e5d6f3", "interactive_hover": "#e0cef0", "accent": "#7750b4", "text_primary": "#211a26", "text_secondary": "#6a557d", "notification": "#d93030"},
+        {"base_lowest": "#c8f2ed", "base_lower": "#e0f7f5", "base_low": "#edfbf9", "surface": "#f6fdfc", "surface_high": "#d5f5f1", "interactive": "#b6ede7", "interactive_hover": "#a7e9e3", "accent": "#0c7171", "text_primary": "#141f1e", "text_secondary": "#3c6460", "notification": "#d93030"},
+        {"base_lowest": "#cae1f8", "base_lower": "#e1eefb", "base_low": "#edf5fd", "surface": "#f6fafe", "surface_high": "#d6e8f9", "interactive": "#b8d7f5", "interactive_hover": "#aacff3", "accent": "#2559e0", "text_primary": "#171d23", "text_secondary": "#475e76", "notification": "#d93030"},
+        {"base_lowest": "#f2d7f6", "base_lower": "#f8e8fa", "base_low": "#fbf2fc", "surface": "#fdf8fd", "surface_high": "#f5e0f8", "interactive": "#eecaf3", "interactive_hover": "#eabff0", "accent": "#9f31b7", "text_primary": "#241926", "text_secondary": "#794c7f", "notification": "#d93030"},
+        {"base_lowest": "#fbeac9", "base_lower": "#fdf3e0", "base_low": "#fef8ed", "surface": "#fefbf6", "surface_high": "#fcefd5", "interactive": "#fae3b7", "interactive_hover": "#f9dda8", "accent": "#925809", "text_primary": "#201c15", "text_secondary": "#6a5c40", "notification": "#d93030"},
+        {"base_lowest": "#eadccc", "base_lower": "#f3ebe2", "base_low": "#f8f3ee", "surface": "#fbf9f6", "surface_high": "#efe4d8", "interactive": "#e3d0bb", "interactive_hover": "#ddc7ad", "accent": "#885c2a", "text_primary": "#211c16", "text_secondary": "#6d5841", "notification": "#d93030"},
+        {"base_lowest": "#fad2cb", "base_lower": "#fce6e2", "base_low": "#fdf0ee", "surface": "#fef8f6", "surface_high": "#fbddd7", "interactive": "#f8c3ba", "interactive_hover": "#f7b8ac", "accent": "#bf2b22", "text_primary": "#251a18", "text_secondary": "#785048", "notification": "#d93030"}
+      ]
+    },
+    "dusk": {
+      "base": "light",
+      "colors": {"base_lowest": "#f1d8d1", "base_lower": "#f6e7e2", "base_low": "#f9efed", "surface": "#fcf6f5", "surface_high": "#f4e0da", "interactive": "#edcfc6", "interactive_hover": "#eac7bc", "accent": "#8a4637", "text_primary": "#241a18", "text_secondary": "#74544a", "notification": "#d93030"},
+      "months": [
+        {"base_lowest": "#d1d4d9", "base_lower": "#e2e4e7", "base_low": "#edeef0", "surface": "#f5f5f6", "surface_high": "#dbdce0", "interactive": "#c6c9cf", "interactive_hover": "#bdc0c7", "accent": "#3f588c", "text_primary": "#1b1d1f", "text_secondary": "#52555c", "notification": "#d12e2e"},
+        {"base_lowest": "#dbcea5", "base_lower": "#e8e0c6", "base_low": "#f1ebdb", "surface": "#f7f4eb", "surface_high": "#e2d8b7", "interactive": "#d2c28e", "interactive_hover": "#cbb87c", "accent": "#6c5713", "text_primary": "#1f1d14", "text_secondary": "#5a5136", "notification": "#cb2d2d"},
+        {"base_lowest": "#bacea9", "base_lower": "#d4e0ca", "base_low": "#e3ebdd", "surface": "#f0f4ec", "surface_high": "#c8d8bb", "interactive": "#a9c294", "interactive_hover": "#9bb883", "accent": "#3e631f", "text_primary": "#191e14", "text_secondary": "#415332", "notification": "#c22b2b"},
+        {"base_lowest": "#e1bdca", "base_lower": "#ecd6de", "base_low": "#f3e5ea", "surface": "#f8f0f3", "surface_high": "#e7cad4", "interactive": "#d9acbc", "interactive_hover": "#d39fb2", "accent": "#8d3f5b", "text_primary": "#26191e", "text_secondary": "#6b404f", "notification": "#c12a2a"},
+        {"base_lowest": "#a5c5af", "base_lower": "#c7dbcd", "base_low": "#dbe8df", "surface": "#ebf2ed", "surface_high": "#b7d0bf", "interactive": "#8fb69b", "interactive_hover": "#7daa8a", "accent": "#1d6633", "text_primary": "#141f17", "text_secondary": "#2e4d37", "notification": "#b52828"},
+        {"base_lowest": "#c5b7da", "base_lower": "#dbd2e8", "base_low": "#e8e2f0", "surface": "#f2eff7", "surface_high": "#d1c6e1", "interactive": "#b6a6d0", "interactive_hover": "#ab97c9", "accent": "#69479e", "text_primary": "#201a28", "text_secondary": "#4f3e68", "notification": "#b42828"},
+        {"base_lowest": "#9fcaca", "base_lower": "#c3dede", "base_low": "#d9eaea", "surface": "#e9f3f3", "surface_high": "#b2d4d5", "interactive": "#87bcbd", "interactive_hover": "#74b2b2", "accent": "#0c6364", "text_primary": "#141f1f", "text_secondary": "#304f4f", "notification": "#bb2929"},
+        {"base_lowest": "#a3b2d4", "base_lower": "#c5cfe4", "base_low": "#dae0ee", "surface": "#eaeef5", "surface_high": "#b5c2dd", "interactive": "#8c9fca", "interactive_hover": "#7990c1", "accent": "#1f51bf", "text_primary": "#191d26", "text_secondary": "#343e56", "notification": "#a62525"},
+        {"base_lowest": "#cba8d3", "base_lower": "#dec9e3", "base_low": "#eadced", "surface": "#f3ebf5", "surface_high": "#d5badc", "interactive": "#be92c8", "interactive_hover": "#b481bf", "accent": "#8d2ba3", "text_primary": "#241926", "text_secondary": "#523559", "notification": "#a82525"},
+        {"base_lowest": "#dfc39d", "base_lower": "#ebdac2", "base_low": "#f2e7d8", "surface": "#f8f2e9", "surface_high": "#e5cfb1", "interactive": "#d6b484", "interactive_hover": "#d0a871", "accent": "#804d07", "text_primary": "#211c15", "text_secondary": "#5a4b36", "notification": "#c22b2b"},
+        {"base_lowest": "#bfb2a3", "base_lower": "#d7cfc6", "base_low": "#e5e0da", "surface": "#f1eeea", "surface_high": "#ccc1b6", "interactive": "#af9e8c", "interactive_hover": "#a28f7a", "accent": "#7a5021", "text_primary": "#211c16", "text_secondary": "#4c3d2e", "notification": "#a92525"},
+        {"base_lowest": "#d4a7a4", "base_lower": "#e4c8c6", "base_low": "#eedcdb", "surface": "#f5ebeb", "surface_high": "#ddb9b6", "interactive": "#ca918e", "interactive_hover": "#c17f7b", "accent": "#a92820", "text_primary": "#261a19", "text_secondary": "#563634", "notification": "#a62424"}
+      ]
+    }
+  }
+}
