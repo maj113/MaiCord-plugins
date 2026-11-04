@@ -16,7 +16,7 @@
     "author": "linkev (Mart): the earlier port and the inspiration",
     "license": "MIT"
   },
-  "version": "1.3.0",
+  "version": "1.3.1",
   "preview_alt": "A soft grey ribbon of folded translucent layers crossing a night sky that is black at the top and glows deep blue toward the bottom, with tiny glinting flakes around the ribbon.",
-  "changelog": "Changes glide: a new month or day and night, a light or dark appearance and the time of day's phases turn over about a second while the ribbon keeps moving, instead of jumping."
+  "changelog": "The Glare knob now does something you can see: 0 turns all glow off, 1 is the look as before, and toward 2 the ribbon's bright folds and the brightest glints bloom softly, at night too."
 }

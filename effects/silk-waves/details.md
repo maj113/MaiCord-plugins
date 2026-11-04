@@ -9,7 +9,8 @@ It needs a MaiCord that draws pass graphs (effects interface 3); an older one do
 - **Month**: follow the date (each month's colours turn slowly toward the next month's from the 5th), or one month.
 - **Day and night**: follow the clock (the sky turns to night whenever the appearance is dark, so the light day sky never sits under a dark theme's text); the clock, but the whole look at night whenever the appearance is dark (the default); always day, for light themes; always night. With the Silk Waves theme, which turns light by day and dark at night, the sky follows it.
 - **Wave speed**: 1 is the natural pace, a wave about every 21 seconds.
-- **Wave brightness**, **Glitter** and **Glare**: 1 is the intended level.
+- **Wave brightness** and **Glitter**: 1 is the intended level.
+- **Glare**: 0 turns all glow off, 1 is the intended look (only light past white glares), and toward 2 the ribbon's bright folds and the brightest glints bloom softly, at night too, while the sky itself never glows.
 
 It asks for 75 % resolution at 30 frames per second; you can change both.
 

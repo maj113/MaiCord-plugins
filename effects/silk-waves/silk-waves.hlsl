@@ -8,11 +8,12 @@
 // and become the control points of a bicubic B-spline surface, drawn as a 128 x 128 vertex grid additively into a
 // float target: each vertex is lit by its surface density and facing, so the sheet glows where it folds. A full-screen
 // pass lays the wave over a monthly day or night sky and tone maps it with a black crush, with a glare from whatever
-// goes past white. 2,048 glitter flakes, simulated in the same persistent target (born on the ribbon, drifting,
-// spinning), flash when their spin turns them toward a light. The look follows the time of day.
+// goes past white (and, with the Glare knob above 1, from bright folds below it). 2,048 glitter flakes, simulated in
+// the same persistent target (born on the ribbon, drifting, spinning), flash when their spin turns them toward a
+// light. The look follows the time of day.
 // Credit: linkev's PlayStation-3-XMB (MIT) was the earlier port and the inspiration; this one shares no code with it.
 //
-// @effect   name="Silk Waves" authors="MaiCord" license="MIT" version="1.3.0" derived_from="https://github.com/linkev/PlayStation-3-XMB|linkev (Mart)|MIT"
+// @effect   name="Silk Waves" authors="MaiCord" license="MIT" version="1.3.1" derived_from="https://github.com/linkev/PlayStation-3-XMB|linkev (Mart)|MIT"
 // @knob month   choice "By date|January|February|March|April|May|June|July|August|September|October|November|December" = 0 "Month"
 // @knob sky     choice "Clock|Night when dark|Day|Night" = 1 "Day and night"
 // @knob speed   float 0..3 = 1 "Wave speed"
@@ -725,17 +726,24 @@ float3 sky(float2 uv, Mood m) {
     return colour;
 }
 
-// ---- pass 3: the glare source, a quarter-size copy of what the picture holds beyond white -------------------------
-// Only light past the tone map's white glares (the night scene has none); the sky is smooth, so it is taken once.
+// ---- pass 3: the glare source, a quarter-size copy of what the picture holds beyond its threshold -----------------
+// At Glare 1 and below, only light past the tone map's white glares (the night scene has none). Above 1 the threshold
+// drops smoothly, to 0.2 at Glare 2, so the ribbon's bright folds bloom softly, at night too; it never drops below
+// the sky itself (plus a margin), so the sky doesn't glow and a bright day sky doesn't wash out. The sky is smooth,
+// so it is taken once.
+static const float kBloomDrop = 0.8, kBloomMargin = 0.06, kBloomGain = 0.5, kHaloGain = 1.0;
+float bloom_lift() { return smoothstep(1.0, 2.0, knob_glare); }
 float4 glare(float4 position : SV_Position) : SV_Target {
     const Mood m = stored_mood();
     const float2 texel = 1.0 / mc.resolution, uv = position.xy * (1.0 / mc_pass.size);
     const float3 base = sky(frame_uv(uv), m);
+    const float lift = bloom_lift();
+    const float3 threshold = max(1.0 - kBloomDrop * lift, saturate(tone(base, m)) + kBloomMargin * lift);
     float3 sum = 0.0;
     [loop] for (int y = -2; y <= 1; ++y)
         [loop] for (int x = -2; x <= 1; ++x) {
             const float3 light = mc_target1.SampleLevel(mc_linear_clamp, uv + (float2(x, y) * 2.0 + 1.0) * texel, 0).rgb;
-            sum += max(tone(base + light, m) - 1.0, 0.0);
+            sum += max(tone(base + light, m) - threshold, 0.0);
         }
     return float4(sum / 16.0, 0.0);
 }
@@ -759,7 +767,9 @@ float4 compose(float4 position : SV_Position) : SV_Target {
     const Mood m = stored_mood();
     const float3 glow = mc_target3.SampleLevel(mc_linear_clamp, uv, 0).rgb;
     const float3 radiance = sky(frame_uv(uv), m) + mc_target1.Load(int3(position.xy, 0)).rgb;
-    return float4(saturate(tone(radiance, m)) + glow * knob_glare + mc_dither(position.xy), 1.0);
+    // Glare 0 to 1 fades the glow in; above 1 it also grows by half again by Glare 2.
+    const float strength = min(knob_glare, 1.0) * (1.0 + kBloomGain * bloom_lift());
+    return float4(saturate(tone(radiance, m)) + glow * strength + mc_dither(position.xy), 1.0);
 }
 
 // ---- pass 6: the flakes, added over the tone-mapped picture -------------------------------------------------------
@@ -828,7 +838,9 @@ GlintVertex glint_vs(uint vertex_id : SV_VertexID, uint instance_id : SV_Instanc
     output.disc = float4(uv, saturate(near_blur + far_blur), lerp(0.85, 3.8, near_blur));
     output.normal = float4(face, alpha * gain * knob_glitter);
     output.place = float4(corner, halo ? 1.0 : 0.0);
-    output.halo = alpha * (1.0 - exp(-0.039 * highlight * 75.0 * film_tint(face))) * 0.16 * knob_glitter;
+    // The halo is glare too: Glare 0 removes it, Glare 2 doubles it.
+    output.halo = alpha * (1.0 - exp(-0.039 * highlight * 75.0 * film_tint(face))) * 0.16 * knob_glitter
+                * min(knob_glare, 1.0) * (1.0 + kHaloGain * bloom_lift());
     if (motion.w == 0.0 || clip.w < 0.1)
         output.position = float4(0.0, 0.0, 0.0, 1.0);   // nothing yet: a degenerate quad
     return output;

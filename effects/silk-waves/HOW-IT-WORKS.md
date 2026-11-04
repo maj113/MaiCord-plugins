@@ -148,10 +148,14 @@ display = x (1 + x / W²) / (1 + x)
 
 At `W = 1` this is just the linear map with a black crush, which keeps the top of the night sky black.
 
-Only light beyond white glares. The glare pass, at a quarter size, averages `max(tone(sky + light) − 1, 0)` over
-sixteen taps of the light target. The bloom pass blurs that at two widths:
+At Glare 1 only light beyond white glares. The glare pass, at a quarter size, averages `max(tone(sky + light) − θ, 0)`
+over sixteen taps of the light target, with the threshold `θ = 1` up to Glare 1. Above 1 the threshold drops
+smoothly: with `lift = smoothstep(1, 2, Glare)`,
+`θ = max(1 − 0.8 lift, tone(sky) + 0.06 lift)`. That is 0.2 at Glare 2, so the ribbon's bright folds bloom at
+night too, but it never drops below the sky's own brightness plus a margin, so the sky doesn't glow and a bright day
+sky doesn't wash out. The bloom pass blurs that at two widths:
 `0.25 (centre + four diagonal taps at 1.06 texels) + 0.1 (four straight taps at 4 texels)`. The compose pass adds
-it, times the Glare knob, after the clamp, then dithers.
+it after the clamp, times `min(Glare, 1) · (1 + 0.5 lift)`, so Glare 0 has no glow, then dithers.
 
 ## The time of day
 
@@ -242,7 +246,9 @@ film(n) = (1, 0.89, 0.85) · lerp(1, 1.4 (½ + ½ cos 2π (1.7 |n.xy| + (0, 0.33
 ```
 
 `film` is our own thin-film tint: warm white with pink, orange and blue. When the face turns toward the half vector
-the flake also gets a camera-facing glare halo, `5.4 · size · |n · ĥ|^35` across, falling off as `exp(−4.4 r)`.
+the flake also gets a camera-facing glare halo, `5.4 · size · |n · ĥ|^35` across, falling off as `exp(−4.4 r)`. The
+halo is glare too: its brightness is scaled by `min(Glare, 1) · (1 + lift)`, so it is off at Glare 0 and doubled at
+Glare 2.
 The alpha fades the flake in over its first 2 % of life and out over its last 6 %, near the box's walls, when it's
 seen edge-on, and in a thin shell just short of the far focus. A sprite smaller than two pixels is drawn at two
 pixels with its light spread, so it doesn't shimmer.
