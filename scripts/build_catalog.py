@@ -10,7 +10,8 @@ a details.md page and the item's source) and writes:
     details/<sha256>.md               the item pages
     previews/<sha256>.png             theme and effect previews; effect loops (APNG) too
     <work>/index-source.json          the format-2 index members; publish_index.py stamps, renders and signs it as
-                                      index-full.json and, for MaiCord 0.6.0 to 0.6.2, index.json
+                                      index-3.json (MaiCord 0.6.4 and later), index-full.json (0.6.3) and
+                                      index.json (0.6.0 to 0.6.2)
 
 Nothing here needs a signing key. MaiCord's checkout (sparse is enough: include/maicord/sdk, include/maicord/sys,
 src/render/effects/blue_noise_64.bin, tools/) supplies the SDK headers, the pinned LLVM toolchain, the index schema
@@ -115,13 +116,12 @@ class Previous:
 
 
 def previous_items(previous: Previous, plugin_index, public_key: str | None) -> dict:
-    """{(kind, slug): item} of the previously published index, verified when a key is given: the full one, or before
-    the catalog published one, the index every client read."""
-    name = plugin_index.FULL_INDEX
-    document = previous.read(name)
-    if document is None:
-        name = plugin_index.LEGACY_INDEX
+    """{(kind, slug): item} of the previously published index, verified when a key is given: the newest client's
+    (plugin_index.INDEXES), or before the catalog published it, the one before."""
+    for name, _, _ in plugin_index.INDEXES:
         document = previous.read(name)
+        if document is not None:
+            break
     if document is None:
         log("previous: none published")
         return {}
@@ -357,6 +357,76 @@ def theme_color(document: dict, value, depth: int = 0) -> str:
     raise BuildError(f"cannot read the theme colour {value!r}")
 
 
+def luminance(colour: str) -> float:
+    channels = [int(colour[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+    r, g, b = (c / 12.92 if c <= .04045 else ((c + .055) / 1.055) ** 2.4 for c in channels)
+    return .2126 * r + .7152 * g + .0722 * b
+
+
+def contrast(a: str, b: str) -> float:
+    x, y = luminance(a), luminance(b)
+    return (max(x, y) + .05) / (min(x, y) + .05)
+
+
+def mix_colour(a: str, b: str, t: float) -> str:
+    """#rrggbb `t` of the way from a to b, as MaiCord mixes a theme's colours."""
+    return "#" + "".join(f"{round(int(a[i:i + 2], 16) + (int(b[i:i + 2], 16) - int(a[i:i + 2], 16)) * t):02x}"
+                         for i in (1, 3, 5))
+
+
+PHASES = ("night", "dawn", "day", "dusk")
+SURFACES = ("base_lowest", "base_lower", "base_low", "surface", "surface_high")
+VARIANT_COLOURS = SURFACES + ("accent", "text_primary", "text_secondary")
+
+
+def variant_looks(document: dict, slug: str) -> list:
+    """Every look a theme with variants shows: (where, {colour: #rrggbb}) for each phase in each month, turned toward
+    the next month's (eight steps: from the 5th to the 30th a month turns toward the next), and the mixes MaiCord draws
+    between neighbouring phases of one base (eight steps; across a change of base it shows one phase whole). A catalog
+    theme names all four phases, each with its surfaces, accent and text in every month."""
+    variants = document["variants"]
+    if not isinstance(variants, dict) or sorted(variants) != sorted(PHASES):
+        raise BuildError(f"theme {slug}: variants name exactly night, dawn, day and dusk")
+    phases = {}
+    for phase in PHASES:
+        variant = variants[phase]
+        months = variant.get("months", [{}] * 12)
+        if len(months) != 12:
+            raise BuildError(f"theme {slug}: {phase} months lists 12 months")
+        base = variant.get("base", document.get("base", "dark"))
+        for month in range(12):
+            colours = dict(variant.get("colors", {}), **months[month])
+            missing = [name for name in VARIANT_COLOURS if name not in colours]
+            if missing:
+                raise BuildError(f"theme {slug}: {phase} in month {month + 1} lacks {', '.join(missing)}")
+            phases[phase, month] = (base == "light", {n: theme_color(document, colours[n]) for n in VARIANT_COLOURS})
+    looks = []
+    for (phase, month), (light, colours) in phases.items():
+        following = PHASES[(PHASES.index(phase) + 1) % 4]
+        next_light, next_colours = phases[following, month]
+        later, next_later = phases[phase, (month + 1) % 12][1], phases[following, (month + 1) % 12][1]
+        for turn in range(8):
+            here = {n: mix_colour(colours[n], later[n], turn / 8) for n in colours}
+            there = {n: mix_colour(next_colours[n], next_later[n], turn / 8) for n in colours}
+            where = f"month {month + 1}" + (f" turning ({turn}/8)" if turn else "")
+            looks.append((f"{phase}, {where}", here))
+            for step in range(1, 8) if light == next_light else ():
+                looks.append((f"{phase} to {following} ({step}/8), {where}",
+                              {n: mix_colour(here[n], there[n], step / 8) for n in colours}))
+    return looks
+
+
+def check_variant_contrast(document: dict, slug: str) -> None:
+    """WCAG AA in every look (see variant_looks): text 4.5:1 and muted text 3:1 on every surface, the accent 3:1 on
+    the chat and the sidebar."""
+    for where, colours in variant_looks(document, slug):
+        for name, minimum, surfaces in (("text_primary", 4.5, SURFACES), ("text_secondary", 3, SURFACES),
+                                        ("accent", 3, ("base_low", "base_lower"))):
+            for surface in surfaces:
+                if contrast(colours[name], colours[surface]) < minimum:
+                    raise BuildError(f"theme {slug}: {name} on {surface} is below {minimum}:1 at {where}")
+
+
 def theme_item(site: Site, slug: str, directory: Path, meta: dict, ctx: dict) -> dict:
     path = directory / "theme.json"
     data = path.read_bytes().replace(b"\r\n", b"\n")  # the repository stores LF; a CRLF checkout must hash the same
@@ -377,8 +447,12 @@ def theme_item(site: Site, slug: str, directory: Path, meta: dict, ctx: dict) ->
         raise BuildError(f"theme {slug}: catalog.json effect and theme.json background.effect differ")
     preview = (directory / "preview.png").read_bytes()
     width, height = png_size(preview, f"theme {slug} preview.png")
+    # A theme that changes with the time of day needs MaiCord's theme interface 2.
+    if "variants" in document:
+        check_variant_contrast(document, slug)
     return {"data": data, "base": base, "swatches": swatches, "previews": [dict(site.put("previews", "png", preview),
-            width=width, height=height, alt=meta["preview_alt"])], "effect": meta.get("effect")}
+            width=width, height=height, alt=meta["preview_alt"])], "effect": meta.get("effect"),
+            "interface": 2 if "variants" in document else 1}
 
 
 # ---- effects ---------------------------------------------------------------------------------------
@@ -511,8 +585,8 @@ def main() -> int:
                 else:
                     for key in ("cost", "blend", "uses", "knobs", "loop"):
                         item[key] = built[key]
-                    if built["interface"] > 1:
-                        item["interface"] = built["interface"]
+                if built["interface"] > 1:
+                    item["interface"] = built["interface"]
             check_item(plugin_index, item)
             items.append(item)
 
@@ -520,11 +594,13 @@ def main() -> int:
     revocations = load_json(ROOT / "index" / "revocations.json")
     source = {"format": 2, "sequence": 1, "issued": 1, "expires": 2, "items": items,
               "revoked": revocations.get("revoked", []), "blocklist": revocations.get("blocklist", [])}
-    plugin_index.render_index(source)  # the whole catalog, as the client will read it
-    plugin_index.render_index(plugin_index.legacy_source(source))  # and as 0.6.0 to 0.6.2 will
-    held = sorted(i["slug"] for i in items if i.get("interface", 1) > 1)
-    if held:
-        log(f"index.json (MaiCord 0.6.0 to 0.6.2) leaves out effects needing a newer interface: {', '.join(held)}")
+    for _, reader, _ in plugin_index.INDEXES:  # the catalog as each client will read it
+        plugin_index.render_index(plugin_index.reader_source(source, reader), reader)
+    for name, reader, _ in plugin_index.INDEXES[1:]:
+        kept = {(i["kind"], i["slug"]) for i in plugin_index.reader_source(source, reader)["items"]}
+        held = sorted(f"{i['kind']} {i['slug']}" for i in items if (i["kind"], i["slug"]) not in kept)
+        if held:
+            log(f"{name} leaves out what its MaiCord can't read: {', '.join(held)}")
     (work / "index-source.json").write_text(json.dumps(source, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     log(f"built {len(items)} items into {out}; index source {work / 'index-source.json'}")
     return 0

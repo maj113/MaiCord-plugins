@@ -183,6 +183,31 @@ class DetailsAndThemeTests(unittest.TestCase):
         with self.assertRaises(build_catalog.BuildError):
             build_catalog.theme_color(document, "red")
 
+    def test_silk_waves_theme_is_readable_in_every_phase_and_month(self):
+        document = json.loads((ROOT / "themes" / "silk-waves" / "theme.json").read_text(encoding="utf-8"))
+        looks = build_catalog.variant_looks(document, "silk-waves")
+        # 4 phases in 12 months, each in 8 steps of turning toward the next month, and 7 mixing steps for each of the
+        # two same-base pairs (night to dawn, day to dusk).
+        self.assertEqual(len(looks), 4 * 12 * 8 + 2 * 12 * 8 * 7)
+        build_catalog.check_variant_contrast(document, "silk-waves")
+        for where, colours in looks:
+            for surface in build_catalog.SURFACES:
+                for text in ("text_primary", "text_secondary"):
+                    self.assertGreaterEqual(build_catalog.contrast(colours[text], colours[surface]), 4.5, f"{text} on {surface}, {where}")
+        bases = {phase: document["variants"][phase]["base"] for phase in build_catalog.PHASES}
+        self.assertEqual(bases, {"night": "dark", "dawn": "dark", "day": "light", "dusk": "light"})
+        self.assertEqual(document["background"]["effect"], "silk-waves")
+
+    def test_variant_contrast_refuses_unreadable_or_incomplete_themes(self):
+        document = json.loads((ROOT / "themes" / "silk-waves" / "theme.json").read_text(encoding="utf-8"))
+        document["variants"]["day"]["months"][5]["text_secondary"] = "#c0c0c0"
+        with self.assertRaisesRegex(build_catalog.BuildError, r"text_secondary on .* at day, month [56]"):
+            build_catalog.check_variant_contrast(document, "t")
+        del document["variants"]["dusk"]
+        with self.assertRaisesRegex(build_catalog.BuildError, "night, dawn, day and dusk"):
+            build_catalog.variant_looks(document, "t")
+        self.assertEqual(build_catalog.mix_colour("#000000", "#ff8040", .5), "#804020")
+
 
 class PolicyTests(unittest.TestCase):
     def test_refused_permissions_fail_the_build(self):

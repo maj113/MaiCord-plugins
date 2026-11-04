@@ -151,6 +151,9 @@ def item_lines(item: dict, old: dict | None, compared: bool) -> list:
             lines.append("- Effect: " + (f"`{item['effect']}`" if item.get("effect") else "none"))
             swatches = item["swatches"]
             lines.append("- Swatches: " + ", ".join(f"{name} `{swatches[name]}`" for name in ("background", "surface", "text", "accent")))
+            if item.get("interface", 1) > 1:
+                lines.append(f"- Interface {item['interface']} (changes with the time of day): listed for MaiCord 0.6.4 "
+                             "and later only (index-full.json and index.json, which 0.6.0 to 0.6.3 read, leave it out)")
         else:
             cost = item["cost"]
             moved = ""

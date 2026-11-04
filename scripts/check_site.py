@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Checks a built site directory the way a client reads it: both indexes (index-full.json for MaiCord 0.6.3 and later,
-index.json for 0.6.0 to 0.6.2) parse under the client's schema (and, with --public-key, verify under the catalog key),
-index.json is the legacy form of index-full.json one sequence lower, every details, preview, loop and package file the
-full index names exists with the listed size and SHA-256, and nothing else is published.
+"""Checks a built site directory the way a client reads it: the three indexes (plugin_index.INDEXES: index-3.json for
+MaiCord 0.6.4 and later, index-full.json for 0.6.3, index.json for 0.6.0 to 0.6.2) parse under each client's schema
+(and, with --public-key, verify under the catalog key), the older two are index-3.json's reader_source forms one and
+two sequences lower, every details, preview, loop and package file index-3.json names exists with the listed size and
+SHA-256, and nothing else is published.
 
     python -B scripts/check_site.py --tools <MaiCord>/tools/release [--public-key <hex>] site
     python -B scripts/check_site.py --tools <MaiCord>/tools/release --source build/index-source.json site
 
-With --source the unsigned index source stands in for both indexes (the build job checks the files before the sign
+With --source the unsigned index source stands in for the indexes (the build job checks the files before the sign
 job stamps and signs them).
 """
 
@@ -36,24 +37,31 @@ def main() -> int:
 
     site = arguments.site
     now = int(time.time())
-    names = (plugin_index.FULL_INDEX, plugin_index.LEGACY_INDEX)
+    names = [name for name, _, _ in plugin_index.INDEXES]
     try:
         if arguments.source:
             source = json.loads(arguments.source.read_text(encoding="utf-8"))
             index = plugin_index.parse_index(plugin_index.render_index(source), None)
-            plugin_index.render_index(plugin_index.legacy_source(source))
+            for _, reader, _ in plugin_index.INDEXES[1:]:
+                plugin_index.render_index(plugin_index.reader_source(source, reader), reader)
         else:
             point = plugin_index.cng_p256.parse_public_point(arguments.public_key) if arguments.public_key else None
             documents = {name: (site / name).read_bytes() for name in names}
-            indexes = {name: plugin_index.verify_index(documents[name], (site / f"{name}.sig").read_bytes(), point, now)
-                       if point else plugin_index.parse_index(documents[name], now) for name in names}
-            index = indexes[plugin_index.FULL_INDEX]
-            full = json.loads(documents[plugin_index.FULL_INDEX])
-            legacy = plugin_index.render_index(dict(plugin_index.legacy_source(full), sequence=full["sequence"] - 1))
-            if documents[plugin_index.LEGACY_INDEX] != legacy:
-                print(f"error: {plugin_index.LEGACY_INDEX} is not the legacy form of {plugin_index.FULL_INDEX}, one "
-                      "sequence lower", file=sys.stderr)
-                return 1
+            for name, reader, _ in plugin_index.INDEXES:
+                if point:
+                    plugin_index.verify_index(documents[name], (site / f"{name}.sig").read_bytes(), point, now, reader=reader)
+                else:
+                    plugin_index.parse_index(documents[name], now, reader=reader)
+            index = plugin_index.parse_index(documents[plugin_index.INDEX_3], now)
+            newest = json.loads(documents[plugin_index.INDEX_3])
+            top = plugin_index.INDEXES[0][2]
+            for name, reader, offset in plugin_index.INDEXES[1:]:
+                expected = plugin_index.render_index(dict(plugin_index.reader_source(newest, reader),
+                                                          sequence=newest["sequence"] - top + offset), reader)
+                if documents[name] != expected:
+                    print(f"error: {name} is not the form of {plugin_index.INDEX_3} its MaiCord reads, signed "
+                          f"{top - offset} below it", file=sys.stderr)
+                    return 1
     except plugin_index.PluginIndexError as error:
         print(f"error: index: {error}", file=sys.stderr)
         return 1

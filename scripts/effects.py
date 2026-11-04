@@ -13,9 +13,10 @@ checks that the three agree, so the package, the preview and the index never des
 The manifest's "interface" is 1; 2 when the effect uses clock or appearance (mc_ambient); 3 for a pass graph
 (`@target` / `@pass` lines: up to six passes of ps_5_0 and vs_5_0 shaders, the first pass's pixel shader in DXBC
 and the others, in order of first use, in SHADERS) or texture2/texture3. A client before an interface refuses its
-packages, so the catalog lists an interface above 1 in index-full.json (MaiCord 0.6.3 and later) and leaves such an
-effect out of index.json (0.6.0 to 0.6.2). The index lists only INDEX_USES, the names every format-2 client reads
-(its index reader refuses an unknown name, so a new one there would break the whole catalog for it).
+packages, so the catalog lists an interface above 1 in index-3.json (MaiCord 0.6.4 and later) and index-full.json
+(0.6.3) and leaves such an effect out of index.json (0.6.0 to 0.6.2). The index lists only INDEX_USES, the names every
+format-2 client reads (the readers before 0.6.4 refuse an unknown name, so a new one there would break the whole
+catalog for them).
 """
 
 from __future__ import annotations

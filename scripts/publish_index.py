@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stamp, render and sign the official MaiCord catalog's two indexes (format 2).
+"""Stamp, render and sign the official MaiCord catalog's three indexes (format 2).
 
     python -B scripts/publish_index.py --tools <MaiCord>/tools/release build/index-source.json site
 
@@ -11,13 +11,17 @@ variable and never touches the disk. The script stamps the source with:
             whose sequence is lower than the last one it accepted, or equal
             to it with different bytes, so every signing run needs a higher
             sequence. The issue time grows with every run, re-runs included.
-It then renders the documents with plugin_index.render_index (the client's
-strict schema) and writes, each with its .sig:
-  index-full.json  the whole source at sequence + 1, for MaiCord 0.6.3 and
-                   later; a client updated from 0.6.2 accepts it over the
-                   index.json it last read;
-  index.json       plugin_index.legacy_source() of it at sequence, for 0.6.0 to
-                   0.6.2: without the effects whose package they refuse.
+It then renders the documents with plugin_index.render_index (each reader's
+schema) and writes, each with its .sig (plugin_index.INDEXES):
+  index-3.json     the whole source at sequence + 2, for MaiCord 0.6.4 and
+                   later: any item may name the interface it needs, and the
+                   reader skips what it doesn't know, so later fields land here;
+  index-full.json  reader_source(2) at sequence + 1, for 0.6.3: without the
+                   themes and plugins that name an interface;
+  index.json       reader_source(1) at sequence, for 0.6.0 to 0.6.2: also
+                   without the effects whose package they refuse.
+Each newer client's index is signed higher, so updating MaiCord (0.6.2 to 0.6.3
+to 0.6.4) always moves to a higher sequence than the one it last accepted.
 """
 
 from __future__ import annotations
@@ -58,20 +62,21 @@ def main() -> int:
     source["expires"] = issued + arguments.validity_days * 86400
     source["sequence"] = max(int(source.get("sequence", 0)), issued)
     try:
-        legacy = plugin_index.render_index(plugin_index.legacy_source(source))
-        full = plugin_index.render_index(dict(source, sequence=source["sequence"] + 1))
+        documents = [plugin_index.render_index(dict(plugin_index.reader_source(source, reader),
+                                                    sequence=source["sequence"] + offset), reader)
+                     for _, reader, offset in plugin_index.INDEXES]
     except plugin_index.PluginIndexError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
     try:
         key = cng_p256.PrivateKey.from_jwk(jwk)
-        signatures = [plugin_index.sign_index(document, key) for document in (full, legacy)]
+        signatures = [plugin_index.sign_index(document, key) for document in documents]
     except (cng_p256.CngError, KeyError, ValueError) as error:
         # The type only: the message could quote the key.
         print(f"error: the signing key is unusable ({type(error).__name__})", file=sys.stderr)
         return 1
     arguments.site.mkdir(parents=True, exist_ok=True)
-    for name, document, signature in zip((plugin_index.FULL_INDEX, plugin_index.LEGACY_INDEX), (full, legacy), signatures):
+    for (name, _, _), document, signature in zip(plugin_index.INDEXES, documents, signatures):
         (arguments.site / name).write_bytes(document)
         (arguments.site / f"{name}.sig").write_bytes(signature)
         print(f"{arguments.site / name}: {len(document)} bytes, sequence {json.loads(document)['sequence']}, "

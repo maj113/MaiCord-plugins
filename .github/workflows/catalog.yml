@@ -3,9 +3,9 @@ name: Publish the catalog
 # Builds every plugin, theme and effect in this repository, renders the signed
 # format-2 indexes MaiCord reads, verifies them against the public key compiled
 # into MaiCord, and deploys the site to GitHub Pages:
-#   https://maj113.github.io/MaiCord-plugins/index-full.json (+ .sig), for MaiCord 0.6.3 and later
-#   https://maj113.github.io/MaiCord-plugins/index.json (+ .sig), the same without
-#     the effects 0.6.0 to 0.6.2 can't run (scripts/publish_index.py)
+#   https://maj113.github.io/MaiCord-plugins/index-3.json (+ .sig), for MaiCord 0.6.4 and later
+#   https://maj113.github.io/MaiCord-plugins/index-full.json (+ .sig), for 0.6.3, and index.json (+ .sig), for
+#     0.6.0 to 0.6.2: the same without what they can't read (scripts/publish_index.py)
 #   https://maj113.github.io/MaiCord-plugins/details/<sha256>.md
 #   https://maj113.github.io/MaiCord-plugins/previews/<sha256>.png
 #   https://maj113.github.io/MaiCord-plugins/files/<sha256>.dll|.json|.mcfx
@@ -20,7 +20,7 @@ name: Publish the catalog
 # and the previews, which it uploads as an artifact.
 # Each index is valid for 30 days (the client accepts at most 35), so the weekly
 # run re-signs it long before it expires. MaiCord's tools/release
-# (plugin_index.py, the client's strict schema, and cng_p256.py, which signs
+# (plugin_index.py, each client's schema, and cng_p256.py, which signs
 # with Windows CNG) come from MaiCord's master branch, hence the Windows runner.
 on:
   push:

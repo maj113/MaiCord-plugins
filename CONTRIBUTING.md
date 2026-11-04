@@ -105,6 +105,47 @@ A theme may name a background effect in `catalog.json` (`effect`, an effect
 slug) and a `base` (`dark`, `light` or `amoled`); otherwise the base is the
 theme's own. The swatches the site shows come from `theme.json`'s colours.
 
+### A theme that changes with the time of day
+
+A theme can follow the clock and the month, as `themes/silk-waves` does, with a
+`variants` member beside its usual ones:
+
+```json
+"variants": {
+  "night": {"base": "dark", "colors": {"accent": "#9c6008", "...": "..."},
+            "months": [{"accent": "#556caa"}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}]},
+  "dawn": {"base": "dark", "...": "..."},
+  "day": {"base": "light", "...": "..."},
+  "dusk": {"base": "light", "...": "..."}
+}
+```
+
+- Each **phase** has a `base`, core `colors` (the `colors` names; values may
+  name your `palette`) and optionally `months`: exactly twelve objects of core
+  colours, January first, laid over the phase's for that month. Like the Silk
+  Waves sky, a month holds until the 5th and turns toward the next month's
+  colours by the 30th. A phase starts from its base's built-in colours, not
+  from the root's; the root's `semantic` overrides don't apply to it, while
+  typography, metrics, scale, motion, components and the background apply to
+  every phase.
+- MaiCord holds each phase around its hours, as Silk Waves does: night 23:00 to
+  01:00, dawn 05:00 to 07:00, day 11:00 to 13:00, dusk 17:00 to 19:00, with a
+  smoothstep across the four hours between that mixes the colours. Between
+  phases of different bases the nearer one shows whole (the switch falls
+  halfway, at 03:00, 09:00, 15:00 or 21:00) and glides over 1.5 seconds, or
+  happens at once with reduced motion. While the theme is on, an effect's light
+  or dark appearance follows the theme alone, not Windows.
+- The root `colors` and `base` are what a MaiCord without variants shows (before
+  0.6.4 it skips the member). The catalog lists such a theme with
+  `"interface": 2`, in `index-3.json` only.
+- In the catalog, name all four phases, and give every phase in every month
+  its `base_lowest`, `base_lower`, `base_low`, `surface`, `surface_high`,
+  `accent`, `text_primary` and `text_secondary` (in `colors` or the month's
+  object). The build checks WCAG AA in every phase, month and step of a mix:
+  text 4.5:1 and muted text 3:1 on all five surfaces, the accent 3:1 on the
+  chat and sidebar. `scripts/build_catalog.py`'s `variant_looks` lists what it
+  checks.
+
 ## An effect
 
 An effect is one HLSL pixel shader plus a sidecar; it runs on the GPU only.
@@ -126,10 +167,10 @@ An effect is one HLSL pixel shader plus a sidecar; it runs on the GPU only.
    more than one full-screen function can be a **pass graph** (`// @target`
    and `// @pass` lines, up to six passes of pixel and vertex shaders over
    host-made geometry, small float targets, persistent state); see
-   MaiCord's `samples/effects/README.md` (Pass graphs). It is packed as
    interface 3, and CI measures and previews the whole graph. The catalog
    lists an interface-2 or interface-3 effect for MaiCord 0.6.3 and later
-   only: `index.json`, which 0.6.0 to 0.6.2 read, leaves it out.
+   only: `index.json`, which 0.6.0 to 0.6.2 read, leaves it out (see
+   [the indexes](#the-indexes)).
 3. **Build it:** `maicord-plugin effect build` compiles, lints (constant buffer
    `b0`, textures `t0-t4` or `t0-t10` for a graph, samplers `s0-s2`, no UAVs,
    at most 4,096 instructions and 64 texture reads per shader) and writes
@@ -269,6 +310,25 @@ python -B scripts/build_catalog.py --maicord ..\MaiCord --out site --only plugin
 writes a partial site: the files, the details, the previews and
 `build/index-source.json`. Look at `site\previews\` for an effect's preview.
 The build log shows each effect's WARP time and cost class.
+
+## The indexes
+
+CI publishes the catalog as three signed indexes of one source, one per
+MaiCord reader (MaiCord's `tools/release/plugin_index.py`, `INDEXES`):
+
+| File | Read by | Signed at | Leaves out |
+|---|---|---|---|
+| `index-3.json` | MaiCord 0.6.4 and later | sequence + 2 | nothing |
+| `index-full.json` | 0.6.3 | sequence + 1 | themes and plugins that name an `interface` |
+| `index.json` | 0.6.0 to 0.6.2 | sequence | also effects that need an interface above 1, and a theme's link to them |
+
+Any item in `index-3.json` may name the `interface` it needs: an effect's
+`.mcfx` interface (2 for clock or appearance, 3 for a pass graph), a theme's
+(2 for `variants`), a plugin entry's (1). MaiCord shows an item above its own
+level as needing a newer MaiCord. Its reader skips members and item kinds it
+doesn't know, so a later field only lands in `index-3.json` and never needs
+another file. Each newer client's index is signed higher, so updating MaiCord
+always moves it to an index above the one it last accepted.
 
 ## How previews are made
 
