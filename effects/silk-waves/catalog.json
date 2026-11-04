@@ -1,0 +1,22 @@
+{
+  "name": "Silk Waves",
+  "summary": "A silky ribbon and glitter inspired by the PS3 menu background: a simulated cloth ribbon that folds and glows over a monthly day or night sky, with spinning flakes that glint.",
+  "authors": [
+    {
+      "name": "MaiCord"
+    }
+  ],
+  "license": "MIT",
+  "categories": [
+    "ambient",
+    "retro"
+  ],
+  "derived_from": {
+    "url": "https://github.com/linkev/PlayStation-3-XMB",
+    "author": "linkev (Mart): the earlier port and the inspiration",
+    "license": "MIT"
+  },
+  "version": "1.0.0",
+  "preview_alt": "A soft grey ribbon of folded translucent layers crossing a night sky that is black at the top and glows deep blue toward the bottom, with tiny glinting flakes around the ribbon.",
+  "changelog": "First release: a simulated cloth ribbon whose folds glow, flakes that glint as they spin, and colours that follow the month and the time of day. Needs a MaiCord with pass graphs."
+}

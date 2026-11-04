@@ -34,7 +34,7 @@ def effect_folders():
 
 class EffectTests(unittest.TestCase):
     def test_every_effect_agrees_with_its_sidecar_and_defines(self):
-        self.assertEqual(len(effect_folders()), 7)
+        self.assertEqual(len(effect_folders()), 8)
         for folder in effect_folders():
             slug = folder.name
             source = (folder / f"{slug}.hlsl").read_text(encoding="utf-8")
