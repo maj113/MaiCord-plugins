@@ -158,6 +158,9 @@ def item_lines(item: dict, old: dict | None, compared: bool) -> list:
                 moved = f" (published: {old['cost']}" + ("; **slower**" if COST_ORDER[cost] > COST_ORDER[old["cost"]] else "") + ")"
             lines.append(f"- Cost class: **{cost}**{moved}, measured on WARP at 960x540 against the calibration shader")
             lines.append(f"- Blend: {item['blend']}; inputs: {code(item['uses'])}")
+            if item.get("interface", 1) > 1:
+                lines.append(f"- Interface {item['interface']}: listed for MaiCord 0.6.3 and later only (index.json, "
+                             "which 0.6.0 to 0.6.2 read, leaves it out)")
             counts = {t: sum(1 for k in item["knobs"] if k["type"] == t) for t in ("float", "int", "toggle", "color", "choice")}
             lines.append(f"- Knobs: {len(item['knobs'])} ({', '.join(f'{n} {t}' for t, n in counts.items() if n) or 'none'})")
         if "changelog" in item:

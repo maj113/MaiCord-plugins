@@ -1,9 +1,11 @@
 name: Publish the catalog
 
 # Builds every plugin, theme and effect in this repository, renders the signed
-# format-2 index MaiCord reads, verifies it against the public key compiled
+# format-2 indexes MaiCord reads, verifies them against the public key compiled
 # into MaiCord, and deploys the site to GitHub Pages:
-#   https://maj113.github.io/MaiCord-plugins/index.json (+ .sig)
+#   https://maj113.github.io/MaiCord-plugins/index-full.json (+ .sig), for MaiCord 0.6.3 and later
+#   https://maj113.github.io/MaiCord-plugins/index.json (+ .sig), the same without
+#     the effects 0.6.0 to 0.6.2 can't run (scripts/publish_index.py)
 #   https://maj113.github.io/MaiCord-plugins/details/<sha256>.md
 #   https://maj113.github.io/MaiCord-plugins/previews/<sha256>.png
 #   https://maj113.github.io/MaiCord-plugins/files/<sha256>.dll|.json|.mcfx
@@ -189,7 +191,7 @@ jobs:
           MAICORD_PLUGIN_CATALOG_SIGNING_KEY: ${{ secrets.MAICORD_PLUGIN_CATALOG_SIGNING_KEY }}
         run: |
           $ErrorActionPreference = 'Stop'
-          python -B catalog/scripts/publish_index.py --tools maicord/tools/release build/index-source.json site/index.json
+          python -B catalog/scripts/publish_index.py --tools maicord/tools/release build/index-source.json site
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       # The key MaiCord builds compile in (MAICORD_PLUGIN_CATALOG_PUBLIC_KEY).

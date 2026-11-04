@@ -9,7 +9,8 @@ a details.md page and the item's source) and writes:
     files/<sha256>.dll|.json|.mcfx    the packages (plugins built from source, themes verbatim, effects packed)
     details/<sha256>.md               the item pages
     previews/<sha256>.png             theme and effect previews; effect loops (APNG) too
-    <work>/index-source.json          the format-2 index members; publish_index.py stamps, renders and signs it
+    <work>/index-source.json          the format-2 index members; publish_index.py stamps, renders and signs it as
+                                      index-full.json and, for MaiCord 0.6.0 to 0.6.2, index.json
 
 Nothing here needs a signing key. MaiCord's checkout (sparse is enough: include/maicord/sdk, include/maicord/sys,
 src/render/effects/blue_noise_64.bin, tools/) supplies the SDK headers, the pinned LLVM toolchain, the index schema
@@ -114,14 +115,19 @@ class Previous:
 
 
 def previous_items(previous: Previous, plugin_index, public_key: str | None) -> dict:
-    """{(kind, slug): item} of the previously published index, verified when a key is given."""
-    document = previous.read("index.json")
+    """{(kind, slug): item} of the previously published index, verified when a key is given: the full one, or before
+    the catalog published one, the index every client read."""
+    name = plugin_index.FULL_INDEX
+    document = previous.read(name)
+    if document is None:
+        name = plugin_index.LEGACY_INDEX
+        document = previous.read(name)
     if document is None:
         log("previous: none published")
         return {}
     now = int(time.time())
     if public_key:
-        signature = previous.read("index.json.sig") or b""
+        signature = previous.read(f"{name}.sig") or b""
         index = None
         for key in public_key.split(","):
             try:
@@ -390,8 +396,9 @@ def effect_item(site: Site, slug: str, directory: Path, meta: dict, renderer, ca
     still, size = images.still(renderer, cso, blend, uses, knobs)
     loop, shape = images.loop(renderer, cso, blend, uses, knobs)
     # The index lists only the names every format-2 client knows (effects.INDEX_USES); clock and appearance live in
-    # the package's interface-2 manifest, which older clients refuse on their own.
+    # the package's manifest. An interface above 1 is listed, so index.json (0.6.0 to 0.6.2) leaves the effect out.
     return {"data": package["package"], "cost": cost, "blend": blend, "uses": [u for u in effects.INDEX_USES if u in uses],
+            "interface": effects.interface_of(header),
             "knobs": header["knobs"],
             "previews": [dict(site.put("previews", "png", still), width=size[0], height=size[1], alt=meta["preview_alt"])],
             "loop": dict(site.put("previews", "png", loop), **shape)}
@@ -504,6 +511,8 @@ def main() -> int:
                 else:
                     for key in ("cost", "blend", "uses", "knobs", "loop"):
                         item[key] = built[key]
+                    if built["interface"] > 1:
+                        item["interface"] = built["interface"]
             check_item(plugin_index, item)
             items.append(item)
 
@@ -512,6 +521,10 @@ def main() -> int:
     source = {"format": 2, "sequence": 1, "issued": 1, "expires": 2, "items": items,
               "revoked": revocations.get("revoked", []), "blocklist": revocations.get("blocklist", [])}
     plugin_index.render_index(source)  # the whole catalog, as the client will read it
+    plugin_index.render_index(plugin_index.legacy_source(source))  # and as 0.6.0 to 0.6.2 will
+    held = sorted(i["slug"] for i in items if i.get("interface", 1) > 1)
+    if held:
+        log(f"index.json (MaiCord 0.6.0 to 0.6.2) leaves out effects needing a newer interface: {', '.join(held)}")
     (work / "index-source.json").write_text(json.dumps(source, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     log(f"built {len(items)} items into {out}; index source {work / 'index-source.json'}")
     return 0

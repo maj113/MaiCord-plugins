@@ -127,7 +127,9 @@ An effect is one HLSL pixel shader plus a sidecar; it runs on the GPU only.
    and `// @pass` lines, up to six passes of pixel and vertex shaders over
    host-made geometry, small float targets, persistent state); see
    MaiCord's `samples/effects/README.md` (Pass graphs). It is packed as
-   interface 3, and CI measures and previews the whole graph.
+   interface 3, and CI measures and previews the whole graph. The catalog
+   lists an interface-2 or interface-3 effect for MaiCord 0.6.3 and later
+   only: `index.json`, which 0.6.0 to 0.6.2 read, leaves it out.
 3. **Build it:** `maicord-plugin effect build` compiles, lints (constant buffer
    `b0`, textures `t0-t4` or `t0-t10` for a graph, samplers `s0-s2`, no UAVs,
    at most 4,096 instructions and 64 texture reads per shader) and writes

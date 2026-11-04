@@ -279,6 +279,9 @@ class ReviewReportTests(unittest.TestCase):
         self.assertIn("Knobs: 2 (1 float, 1 toggle)", report)
         self.assertIn("Loop: 480x270, 9 bytes, 15 fps for 3 s", report)
         self.assertIn("| `gone` | theme | removed from the catalog |", report)
+        self.assertNotIn("Interface", report, "an interface-1 effect runs on every client")
+        report = review_report.render({("effect", "fx"): dict(effect, interface=3)}, {}, {("effect", "fx")})
+        self.assertIn("Interface 3: listed for MaiCord 0.6.3 and later only", report)
         self.assertIn("changes no plugin, theme or effect folder", review_report.render({}, {}, set()))
 
 

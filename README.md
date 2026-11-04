@@ -33,8 +33,10 @@ from it, and a signed index tells MaiCord what is available.
 
 What MaiCord reads is public, on GitHub Pages:
 
-- <https://maj113.github.io/MaiCord-plugins/index.json> and
-  <https://maj113.github.io/MaiCord-plugins/index.json.sig>
+- <https://maj113.github.io/MaiCord-plugins/index-full.json> and its `.sig`,
+  which MaiCord 0.6.3 and later read, and
+  <https://maj113.github.io/MaiCord-plugins/index.json> and its `.sig`, the
+  same index for 0.6.0 to 0.6.2 without the effects they can't run
 - `details/<sha256>.md`, `previews/<sha256>.png` and
   `files/<sha256>.dll|.json|.mcfx`, the files the index names
 
@@ -200,7 +202,7 @@ python -m pip install -r requirements.txt
 python -B scripts/test_catalog_tools.py
 python -B scripts/build_catalog.py --maicord ..\MaiCord --out site
 $env:MAICORD_PLUGIN_CATALOG_SIGNING_KEY = Get-Content throwaway.jwk -Raw   # never the real key
-python -B scripts/publish_index.py --tools ..\MaiCord\tools\release build/index-source.json site/index.json
+python -B scripts/publish_index.py --tools ..\MaiCord\tools\release build/index-source.json site
 python -B scripts/check_site.py --tools ..\MaiCord\tools\release --public-key <130 hex digits> site
 ```
 
