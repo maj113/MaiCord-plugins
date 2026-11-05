@@ -16,7 +16,8 @@ with plugin_index.render_index (each reader's schema) and writes, each with its
 .sig (plugin_index.INDEXES):
   index-4.json     reader_source(4) at sequence + 3, for the Linux client: an
                    effect's "universal" package (the DXBC package plus the GLSL
-                   section, interface 4) is its file;
+                   section, interface 4) is its file, and a plugin version's
+                   "linux" shared object is its file (scripts/build_linux_plugins.py);
   index-3.json     reader_source(3) at sequence + 2, for MaiCord 0.6.4 and
                    later on Windows: every item with its DXBC package, any
                    item may name the interface it needs, and the reader skips
@@ -70,6 +71,11 @@ def main() -> int:
     if plain:
         print(f"error: no interface 4 package (scripts/build_universal.py) for effect {', '.join(plain)}: the Linux "
               "client could not run it.", file=sys.stderr)
+        return 1
+    windows_only = [i["slug"] for i in source["items"] if i["kind"] == "plugin" and "linux" not in i["versions"][0]]
+    if windows_only:
+        print(f"error: no Linux shared object (scripts/build_linux_plugins.py) for plugin {', '.join(windows_only)}: the "
+              "Linux client would not list it.", file=sys.stderr)
         return 1
     try:
         plugin_index.check_source(source)

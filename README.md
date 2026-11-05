@@ -40,7 +40,8 @@ What MaiCord reads is public, on GitHub Pages:
   index without what those versions can't read (see
   [the indexes](CONTRIBUTING.md#the-indexes))
 - `details/<sha256>.md`, `previews/<sha256>.png` and
-  `files/<sha256>.dll|.json|.mcfx`, the files the index names
+  `files/<sha256>.dll|.so|.json|.mcfx`, the files the index names (a plugin's `.so` is
+  for MaiCord on Linux only)
 
 ## Layout
 
@@ -50,7 +51,7 @@ and a `details.md` (the item's page).
 
 | Folder | Holds |
 |---|---|
-| `plugins/<slug>/` | `plugin.cpp` (source only, never a prebuilt DLL), `catalog.json`, `details.md` |
+| `plugins/<slug>/` | `plugin.cpp` (source only, never a prebuilt DLL or shared object), `catalog.json`, `details.md` |
 | `themes/<slug>/` | `theme.json` (a MaiCord theme document, 64 KiB at most), `preview.png` (1440x900, 256 KiB at most), `catalog.json`, `details.md`, `README.md` |
 | `effects/<slug>/` | `<slug>.hlsl` (written against `maicord/sdk/background.hlsli`), `<slug>.effect` (the sidecar the client's dev folder reads), `catalog.json`, `details.md` |
 
@@ -78,7 +79,9 @@ No tables, images, HTML or numbered lists.
    request. [CONTRIBUTING.md](CONTRIBUTING.md) has the steps for each kind and
    the checklist the pull request template asks you to tick.
 3. CI builds it from the pull request: plugins compile with MaiCord's pinned
-   clang-cl against the SDK headers of MaiCord's repository; effects compile
+   clang-cl against the SDK headers of MaiCord's repository, and again on
+   Linux into a shared object with MaiCord's pinned clang (it must say what the DLL
+   says); effects compile
    with `fxc`, are linted (constant buffer `b0`, textures `t0-t4`, samplers
    `s0-s2`, no UAVs, at most 4,096 instructions and 64 texture reads),
    measured and rendered on WARP (the in-box software rasterizer) into a still

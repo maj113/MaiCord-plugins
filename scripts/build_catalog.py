@@ -6,12 +6,13 @@
 Reads plugins/<slug>/, themes/<slug>/ and effects/<slug>/ (each holds a catalog.json with what the catalog shows,
 a details.md page and the item's source) and writes:
 
-    files/<sha256>.dll|.json|.mcfx    the packages (plugins built from source, themes verbatim, effects packed)
+    files/<sha256>.dll|.so|.json|.mcfx  the packages (plugins built from source, themes verbatim, effects packed)
     details/<sha256>.md               the item pages
     previews/<sha256>.png             theme and effect previews; effect loops (APNG) too
-    <work>/index-source.json          the format-2 index members; scripts/build_universal.py (a Linux job) adds each
-                                      effect's interface 4 package, then publish_index.py stamps, renders and signs it
-                                      as index-4.json (the Linux client), index-3.json (MaiCord 0.6.4 and later on
+    <work>/index-source.json          the format-2 index members; scripts/build_linux_plugins.py and
+                                      scripts/build_universal.py (the Linux job) add each plugin's shared object and
+                                      each effect's interface 4 package, then publish_index.py stamps, renders and signs
+                                      it as index-4.json (the Linux client), index-3.json (MaiCord 0.6.4 and later on
                                       Windows), index-full.json (0.6.3) and index.json (0.6.0 to 0.6.2)
 
 Nothing here needs a signing key. MaiCord's checkout (sparse is enough: include/maicord/sdk, include/maicord/sys,
@@ -21,7 +22,10 @@ src/render/effects/blue_noise_64.bin, tools/) supplies the SDK headers, the pinn
 
 Plugins are built with the client's own flags, a fixed output name and /Brepro, so a rebuild of the same source is
 the same file. Published versions are immutable: a plugin version that is already in the previous index keeps its
-published file, and a source change without a version bump fails the build.
+published file, and a source change without a version bump fails the build. The Linux shared object of a version the
+signed previous index-4.json lists is carried too (a "linux" member of the version in the index source, the file under
+files/<sha256>.so): the key is checked here, so scripts/build_linux_plugins.py, which builds the shared object of every
+other version on a Linux runner, trusts what it finds.
 """
 
 from __future__ import annotations
@@ -36,8 +40,6 @@ import struct
 import subprocess
 import sys
 import time
-import urllib.error
-import urllib.request
 from pathlib import Path
 
 sys.dont_write_bytecode = True
@@ -46,6 +48,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import effects  # noqa: E402
 import images  # noqa: E402
 import pe_descriptor  # noqa: E402
+from published import BuildError, Previous, git, read_index, source_changed  # noqa: E402,F401
 
 KINDS = ("plugin", "theme", "effect")
 DIRECTORIES = {"plugin": "plugins", "theme": "themes", "effect": "effects"}
@@ -67,10 +70,6 @@ REFUSED_PERMISSIONS = ("automated_actions", "persistent_log")
 RESERVED_SLUGS = ("develop",)
 
 
-class BuildError(Exception):
-    pass
-
-
 def log(message: str) -> None:
     print(message, flush=True)
 
@@ -86,65 +85,40 @@ def run(arguments: list, **options) -> subprocess.CompletedProcess:
     return result
 
 
-def git(*arguments: str) -> str | None:
-    result = subprocess.run(["git", "-C", str(ROOT), *arguments], capture_output=True, text=True)
-    return result.stdout.strip() if result.returncode == 0 else None
-
-
 # ---- the previous publish --------------------------------------------------------------
-class Previous:
-    """The last published site (a URL or a directory), read by file name; None when it has no such file."""
-
-    def __init__(self, location: str | None):
-        self.location = location
-
-    def read(self, name: str) -> bytes | None:
-        if not self.location:
-            return None
-        if re.match(r"https?://", self.location):
-            request = urllib.request.Request(self.location.rstrip("/") + "/" + name, headers={"User-Agent": "maicord-catalog-build"})
-            try:
-                with urllib.request.urlopen(request, timeout=60) as response:
-                    return response.read()
-            except urllib.error.HTTPError as error:
-                if error.code == 404:
-                    return None
-                raise BuildError(f"previous {name}: HTTP {error.code}") from error
-            except urllib.error.URLError as error:
-                raise BuildError(f"previous {name}: {error.reason}") from error
-        path = Path(self.location) / name
-        return path.read_bytes() if path.is_file() else None
-
-
 def previous_items(previous: Previous, plugin_index, public_key: str | None) -> dict:
     """{(kind, slug): item} of the previously published index, verified when a key is given: the newest complete form
-    (plugin_index.INDEXES without index-4.json, whose effects list their interface 4 package as the file; the DXBC
-    package is what this build compares with), or before the catalog published it, the one before."""
+    (plugin_index.INDEXES without index-4.json, whose effects list their interface 4 package as the file and whose plugin
+    versions list their shared object; the DXBC package and the DLL are what this build compares with), or before the
+    catalog published it, the one before."""
     for name, reader, _ in plugin_index.INDEXES[1:]:
-        document = previous.read(name)
-        if document is not None:
+        index = read_index(previous, plugin_index, name, reader, public_key, warn)
+        if index is not None:
             break
-    if document is None:
+    else:
         log("previous: none published")
         return {}
-    now = int(time.time())
-    if public_key:
-        signature = previous.read(f"{name}.sig") or b""
-        index = None
-        for key in public_key.split(","):
-            try:
-                point = plugin_index.cng_p256.parse_public_point(key.strip())
-                index = plugin_index.verify_index(document, signature, point, now, accept_expired=True, reader=reader)
-                break
-            except plugin_index.PluginIndexError as error:
-                failure = error
-        if index is None:
-            raise BuildError(f"the previous index does not verify: {failure}")
-    else:
-        warn("the previous index is not verified (no --public-key)")
-        index = plugin_index.parse_index(document, now, accept_expired=True, reader=reader)
     log(f"previous: sequence {index['sequence']}, {len(index['items'])} items")
     return {(i["kind"], i["slug"]): i for i in index["items"]}
+
+
+def previous_shared_objects(previous: Previous, plugin_index, public_key: str | None, published: dict) -> dict:
+    """{(slug, version): file} of the Linux shared objects the previously published index-4.json lists for plugin
+    versions. The key is checked here, on the Windows runner (CNG), so scripts/build_linux_plugins.py takes what this
+    build keeps of them on trust. An index-4.json from before the shared objects lists the DLL of a version, which is
+    what `published` (index-3.json) holds for it, and is skipped."""
+    name, reader, _ = plugin_index.INDEXES[0]
+    index = read_index(previous, plugin_index, name, reader, public_key, warn)
+    found = {}
+    for item in index["items"] if index else ():
+        if item["kind"] != "plugin":
+            continue
+        dlls = {v["version"]: v["file"]["sha256"] for v in published.get(("plugin", item["slug"]), {"versions": []})["versions"]}
+        for version in item["versions"]:
+            if dlls.get(version["version"]) != version["file"]["sha256"]:
+                found[item["slug"], version["version"]] = version["file"]
+    log(f"previous: {len(found)} plugin versions have a shared object")
+    return found
 
 
 # ---- shared item parts -----------------------------------------------------------------
@@ -267,14 +241,6 @@ def refuse_policy_permissions(slug: str, permissions: list) -> None:
                          "Terms of Service); such a plugin can only be sideloaded in Developer Mode")
 
 
-def source_changed(commit: str | None, directory: Path) -> bool | None:
-    """Whether the plugin source differs from the commit a published version was built from; None when unknown."""
-    if not commit or git("cat-file", "-e", commit + "^{commit}") is None:
-        return None
-    return subprocess.run(["git", "-C", str(ROOT), "diff", "--quiet", commit, "HEAD", "--", str(directory / "plugin.cpp")],
-                          stdout=subprocess.DEVNULL).returncode != 0
-
-
 def plugin_item(site: Site, tools: Toolchain, slug: str, directory: Path, meta: dict, ctx: dict, previous: dict | None,
                 owners: dict) -> dict:
     if not (directory / "plugin.cpp").is_file():
@@ -331,6 +297,10 @@ def plugin_item(site: Site, tools: Toolchain, slug: str, directory: Path, meta: 
             ctx["carry"].append((old["file"], "dll"))
     for entry in versions:
         entry.setdefault("network", [])
+        shared = ctx["shared"].get((slug, entry["version"]))
+        if shared:  # published for Linux already: that file stays the version's (scripts/build_linux_plugins.py adds the rest)
+            entry["linux"] = shared
+            ctx["carry"].append((shared, "so"))
     for sha, content in files.items():
         (site.out / "files").mkdir(parents=True, exist_ok=True)
         (site.out / "files" / f"{sha}.dll").write_bytes(content)
@@ -506,8 +476,10 @@ def effect_item(site: Site, slug: str, directory: Path, meta: dict, renderer, ca
 
 # ---- the catalog ---------------------------------------------------------------------------------------
 def check_item(plugin_index, item: dict) -> None:
+    document = {"format": 2, "sequence": 1, "issued": 1, "expires": 2, "items": [item]}
     try:
-        plugin_index.render_index({"format": 2, "sequence": 1, "issued": 1, "expires": 2, "items": [item]})
+        plugin_index.check_source(document)
+        plugin_index.render_index(plugin_index.reader_source(document, 3))
     except plugin_index.PluginIndexError as error:
         raise BuildError(f"{item['kind']} {item['slug']}: {error}") from error
 
@@ -554,6 +526,7 @@ def main() -> int:
     published = previous_items(previous, plugin_index, arguments.public_key)
     commit = arguments.commit if arguments.commit and re.fullmatch(r"[0-9a-f]{40}", arguments.commit) else None
     ctx = {"work": work, "commit": commit, "carry": [], "include": maicord / "include",
+           "shared": previous_shared_objects(previous, plugin_index, arguments.public_key, published),
            "released": lambda directory: dated(directory, now)}
 
     tools = Toolchain(resolve_llvm(arguments.llvm_bin, maicord), maicord)

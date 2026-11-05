@@ -10,8 +10,10 @@ folder has the files the build reads, and the pull request review report.
 
 from __future__ import annotations
 
+import contextlib
 import io
 import json
+import os
 import struct
 import sys
 import unittest
@@ -23,8 +25,10 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 import build_catalog  # noqa: E402
+import build_linux_plugins  # noqa: E402
 import effects  # noqa: E402
 import images  # noqa: E402
+import published  # noqa: E402
 import review_report  # noqa: E402
 
 
@@ -257,6 +261,80 @@ class PolicyTests(unittest.TestCase):
             build_catalog.check_slug(kind, "developer")
         for kind, folder in build_catalog.DIRECTORIES.items():
             self.assertFalse(any(p.name in build_catalog.RESERVED_SLUGS for p in (ROOT / folder).iterdir()))
+
+
+def release_tools():
+    """MaiCord's tools/release (plugin_index.py): MAICORD_TOOLS_RELEASE, else next to this repository (CI's `maicord`,
+    a sibling checkout's `MaiCord`); None when it isn't there."""
+    for candidate in (os.environ.get("MAICORD_TOOLS_RELEASE"), ROOT.parent / "maicord" / "tools" / "release",
+                      ROOT.parent / "MaiCord" / "tools" / "release"):
+        if candidate and (Path(candidate) / "plugin_index.py").is_file():
+            return Path(candidate)
+    return None
+
+
+class FakeSite(published.Previous):
+    """A published site held in memory."""
+
+    def __init__(self, files: dict):
+        super().__init__("memory")
+        self.files = files
+
+    def read(self, name: str):
+        return self.files.get(name)
+
+
+class LinuxPayloadTests(unittest.TestCase):
+    @staticmethod
+    def source(sha: str, linux: str | None = None) -> dict:
+        version = {"version": "1.0.0", "released": 1700000000, "api_level": 3, "permissions": ["message_send"], "network": [],
+                   "file": {"sha256": sha, "bytes": 4096}}
+        if linux:
+            version["linux"] = {"sha256": linux, "bytes": 2048}
+        item = {"kind": "plugin", "slug": "demo", "name": "Demo", "summary": "Does a thing.", "authors": [{"name": "A"}],
+                "license": "MPL-2.0", "source": "https://github.com/maj113/MaiCord-plugins/tree/main/plugins/demo",
+                "categories": ["utility"], "details": {"sha256": "d" * 64, "bytes": 10}, "previews": [], "versions": [version]}
+        return {"format": 2, "sequence": 1, "issued": 1, "expires": 2, "items": [item], "revoked": [], "blocklist": []}
+
+    def site(self, plugin_index, source: dict, listed_in_4: bool) -> FakeSite:
+        """The documents a publish of `source` leaves; with listed_in_4 False, index-4.json is the one from before
+        shared objects existed (it lists the DLL)."""
+        files = {}
+        for name, reader, _ in plugin_index.INDEXES:
+            shown = plugin_index.reader_source(source, reader)
+            if reader == 4 and not listed_in_4:
+                shown = plugin_index.reader_source(source, 3)
+            files[name] = plugin_index.render_index(shown, reader)
+        return FakeSite(files)
+
+    def test_a_published_shared_object_is_carried_and_a_dll_listing_is_not(self):
+        tools = release_tools()
+        if tools is None:
+            self.skipTest("MaiCord's tools/release is not next to this repository")
+        sys.path.insert(0, str(tools))
+        import plugin_index
+
+        dll, so = "a" * 64, "b" * 64
+        for listed, expected in ((True, {("demo", "1.0.0"): {"sha256": so, "bytes": 2048}}), (False, {})):
+            previous = self.site(plugin_index, self.source(dll, so), listed)
+            with contextlib.redirect_stdout(io.StringIO()):
+                items = build_catalog.previous_items(previous, plugin_index, None)
+                found = build_catalog.previous_shared_objects(previous, plugin_index, None, items)
+            self.assertEqual(found, expected, f"index-4 listed {'the shared object' if listed else 'the DLL'}")
+            self.assertEqual(items[("plugin", "demo")]["versions"][0]["file"]["sha256"], dll, "index-3 keeps the DLL")
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(build_catalog.previous_shared_objects(FakeSite({}), plugin_index, None, {}), {}, "nothing published")
+
+    def test_the_shared_object_must_describe_the_same_plugin(self):
+        record = {"version": "1.0.0", "api_level": 3, "permissions": ["message_send"], "network": ["a.example"]}
+        meta = {"name": "Demo", "owner_id": "0x00000000000000AB"}
+        info = {"name": "Demo", "owner_id": 0xAB, "api_level": 3, "permissions": ["message_send"], "network": ["a.example"],
+                "version": "1.0.0", "summary": "s", "author": "a", "homepage": ""}
+        build_linux_plugins.check_descriptor("demo", meta, record, info, None)
+        for key, value in (("name", "Other"), ("owner_id", 0xAC), ("api_level", 2), ("permissions", ["message_send", "network"]),
+                           ("network", [])):
+            with self.assertRaisesRegex(build_catalog.BuildError, "one source must give one descriptor", msg=key):
+                build_linux_plugins.check_descriptor("demo", meta, record, dict(info, **{key: value}), None)
 
 
 class PngEncoderTests(unittest.TestCase):

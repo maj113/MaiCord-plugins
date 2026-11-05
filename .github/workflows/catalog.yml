@@ -4,13 +4,14 @@ name: Publish the catalog
 # format-2 indexes MaiCord reads, verifies them against the public key compiled
 # into MaiCord, and deploys the site to GitHub Pages:
 #   https://maj113.github.io/MaiCord-plugins/index-4.json (+ .sig), for MaiCord on Linux: each effect's interface 4
-#     package, the DXBC package plus a GLSL section (scripts/build_universal.py)
+#     package, the DXBC package plus a GLSL section (scripts/build_universal.py), and each plugin version's shared
+#     object (scripts/build_linux_plugins.py)
 #   https://maj113.github.io/MaiCord-plugins/index-3.json (+ .sig), for MaiCord 0.6.4 and later on Windows
 #   https://maj113.github.io/MaiCord-plugins/index-full.json (+ .sig), for 0.6.3, and index.json (+ .sig), for
 #     0.6.0 to 0.6.2: the same without what they can't read (scripts/publish_index.py)
 #   https://maj113.github.io/MaiCord-plugins/details/<sha256>.md
 #   https://maj113.github.io/MaiCord-plugins/previews/<sha256>.png
-#   https://maj113.github.io/MaiCord-plugins/files/<sha256>.dll|.json|.mcfx
+#   https://maj113.github.io/MaiCord-plugins/files/<sha256>.dll|.so|.json|.mcfx
 # The build job needs no secret and runs on pull requests too: it compiles each
 # plugin with MaiCord's pinned clang-cl against the SDK headers of MaiCord's
 # repository, packs themes and effects (fxc, then previews and cost on WARP, the
@@ -19,10 +20,13 @@ name: Publish the catalog
 # On pull requests it also writes a review report to the run's summary
 # (scripts/review_report.py): the permissions and hosts each changed item
 # declares against the published version, the DLL size, the effect cost class
-# and the previews, which it uploads as an artifact. The Linux job then adds each
-# effect's interface 4 package (MaiCord's maicord-plugin effect build --glsl, on
-# its pinned DXC and SPIRV-Cross, cached by their pins) and checks it against the
-# DXBC package; the sign job refuses an effect without one.
+# and the previews, which it uploads as an artifact. The Linux job then builds each
+# plugin again as an x86-64 shared object (MaiCord's maicord-plugin tool on its pinned
+# LLVM major, checked as the client's ELF loader checks it, its descriptor compared
+# with the DLL's) and adds each effect's interface 4 package (MaiCord's maicord-plugin
+# effect build --glsl, on its pinned DXC and SPIRV-Cross, cached by their pins),
+# checked against the DXBC package; the sign job refuses an effect or plugin without
+# one.
 # Each index is valid for 30 days (the client accepts at most 35), so the weekly
 # run re-signs it long before it expires. MaiCord's tools/release
 # (plugin_index.py, each client's schema, and cng_p256.py, which signs
@@ -169,6 +173,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: catalog
+          fetch-depth: 0
           persist-credentials: false
 
       # The SDK headers the shaders include, the effect tool and the shader toolchain's pin and source.
@@ -182,6 +187,7 @@ jobs:
             /include/maicord/sys/
             /tools/maicord-plugin/
             /tools/release/
+            /tools/install_linux_toolchain.sh
             /tools/glsl_translate.py
             /tools/fetch_linux_shader_toolchain.py
             /tools/linux_shader_toolchain.json
@@ -203,6 +209,22 @@ jobs:
         with:
           path: ~/.cache/maicord-toolchain
           key: shader-toolchain-${{ runner.os }}-${{ hashFiles('maicord/tools/linux_shader_toolchain.json', 'maicord/tools/shadertool/mc_shadertool.cpp') }}
+
+      # Every plugin built again for Linux with MaiCord's own tool on its pinned LLVM major (clang and ld.lld from
+      # apt.llvm.org, installed by MaiCord's tools/install_linux_toolchain.sh, which holds the pin and prints the
+      # resolved version), checked as the client's ELF loader checks it, and named as the "linux" file of the version.
+      - name: Install the LLVM toolchain
+        run: bash maicord/tools/install_linux_toolchain.sh
+
+      - name: Build the plugins for Linux
+        env:
+          MAICORD_LLVM_BIN: /usr/lib/llvm-23/bin
+        run: |
+          python -B catalog/scripts/build_linux_plugins.py --maicord maicord --source build/index-source.json \
+            --summary build/linux-summary.md site
+          if [ "$GITHUB_EVENT_NAME" = pull_request ] && [ -f build/linux-summary.md ]; then
+            cat build/linux-summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Make the Linux packages
         run: |

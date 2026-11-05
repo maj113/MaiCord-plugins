@@ -255,8 +255,8 @@ Everything else is taken from the item itself, so the index can't disagree
 with the binary:
 
 - **Plugins:** version, API level, permissions and network hosts (up to 8) come
-  from the built DLL's descriptor. The DLL is at most 8 MiB, and the
-  version is `MAJOR.MINOR.PATCH`.
+  from the built DLL's descriptor, and the Linux shared object has to say the
+  same. Each file is at most 8 MiB, and the version is `MAJOR.MINOR.PATCH`.
 - **Effects:** knobs (at most 16 numbers and toggles, 4 colours, 8 choices),
   blend and inputs come from the `@knob`, `@blend` and `@uses` lines. The
   package is at most 1.5 MiB (the bytecode and the source each at most
@@ -353,7 +353,7 @@ MaiCord reader (MaiCord's `tools/release/plugin_index.py`, `INDEXES`):
 
 | File | Read by | Signed at | Differs |
 |---|---|---|---|
-| `index-4.json` | MaiCord on Linux | sequence + 3 | an effect's file is its interface 4 package (below) |
+| `index-4.json` | MaiCord on Linux | sequence + 3 | an effect's file is its interface 4 package (below), a plugin version's file is its shared object (below) |
 | `index-3.json` | MaiCord 0.6.4 and later on Windows | sequence + 2 | nothing: every item, with each effect's DXBC package |
 | `index-full.json` | 0.6.3 | sequence + 1 | leaves out themes and plugins that name an `interface` |
 | `index.json` | 0.6.0 to 0.6.2 | sequence | also leaves out effects that need an interface above 1, and a theme's link to them |
@@ -382,6 +382,39 @@ two packages differ only by the interface and the GLSL section
 (`plugin_index.check_universal`) and that every effect has one. A Linux client
 refuses a package without the section, and an older Windows client refuses
 interface 4, which is why neither file replaces the other.
+
+**The Linux shared object.** A plugin version has the same two files: the DLL
+(`index-3.json`, `index-full.json` and `index.json` list it as the version's
+`file`) and an x86-64 shared object (`files/<sha256>.so`) that
+`scripts/build_linux_plugins.py` builds from the same `plugin.cpp` on the Linux
+runner, with MaiCord's `maicord-plugin` tool on its pinned LLVM major (the same
+freestanding recipe: no libc, one export, `-fPIC -fvisibility=hidden`; it is
+built twice to show that a rebuild is the same file). The tool's checks are the
+client's ELF loader's, and any finding fails the build; the descriptor must
+equal the DLL's (name, version, owner id, API level, permissions, hosts,
+summary, author, homepage), so one source can't give two behaviours the index
+describes once. The index source names it in the version's `linux` member,
+which only `index-4.json` shows, as the version's `file`; a version without
+one is left out of that index, and the sign job refuses a plugin whose newest
+version has none (it would not be listed on Linux at all). Published versions
+stay immutable: a version already in the signed `index-4.json` keeps its
+shared object (`build_catalog.py` verifies that index on the Windows runner and
+carries the files), a source change since its commit fails the build (bump the
+version), and a rebuild that only differs through toolchain drift warns and
+keeps the published file. A version published before this existed has no
+shared object and stays Windows-only until its plugin is next released.
+
+To try it yourself (Linux, or WSL, with clang and ld.lld on `PATH` or in
+`MAICORD_LLVM_BIN`), after `build_catalog.py` made the site:
+
+```bash
+python3 -B scripts/build_linux_plugins.py --maicord ../MaiCord --source build/index-source.json site
+python3 -B scripts/check_site.py --tools ../MaiCord/tools/release --source build/index-source.json --require-universal site
+```
+
+Your plugin has to build on Linux. `maicord-plugin build --target linux`
+(Linux, or Windows with clang and ld.lld on `PATH`) is the same build; keep
+platform-specific code out of the descriptor.
 
 ## How previews are made
 
