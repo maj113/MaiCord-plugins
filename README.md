@@ -1,7 +1,7 @@
 # MaiCord plugins
 
 The official catalog of [MaiCord](https://github.com/maj113/MaiCord), the
-native Windows Discord client: **plugins**, **themes** and **background
+native Discord client for Windows and Linux: **plugins**, **themes** and **background
 effects**. This repository holds their **source**, CI builds every listed file
 from it, and a signed index tells MaiCord what is available.
 
@@ -85,7 +85,8 @@ No tables, images, HTML or numbered lists.
    with `fxc`, are linted (constant buffer `b0`, textures `t0-t4`, samplers
    `s0-s2`, no UAVs, at most 4,096 instructions and 64 texture reads),
    measured and rendered on WARP (the in-box software rasterizer) into a still
-   and a short loop; themes are checked and swatched. The run's summary lists,
+   and a short loop, and get an interface 4 package with the GLSL the Linux client
+   runs; themes are checked and swatched. The run's summary lists,
    for every changed item, the permissions and network hosts it declares
    against the published version, the DLL size, the effect's cost class and its
    previews. It needs no secret, so it works on pull requests from forks.
@@ -218,3 +219,9 @@ or directory>` carries earlier plugin versions (for rollback) from the last
 publish; `--only plugin/clear-urls ...` builds a subset. A throwaway key comes
 from MaiCord's `tools/release/generate_update_key.py`; use it only for this
 local run and keep it out of the repository (`*.jwk` is ignored).
+
+The Linux half of a full build, the shared objects of the plugins and the interface 4
+packages of the effects, runs on Linux (WSL works) with clang and ld.lld, between
+`build_catalog.py` and `publish_index.py`; see
+[Checking your work](CONTRIBUTING.md#checking-your-work) and
+[the indexes](CONTRIBUTING.md#the-indexes) for the two scripts.

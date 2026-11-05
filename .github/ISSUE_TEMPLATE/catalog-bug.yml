@@ -35,6 +35,14 @@ body:
       description: The release you run, for example 0.6.0.
     validations:
       required: true
+  - type: input
+    id: system
+    attributes:
+      label: Windows version, or Linux distribution and desktop
+      description: For an effect, include the GPU (and on Linux the driver).
+      placeholder: Windows 11 24H2, or Fedora 43 with KDE Plasma (Wayland), Mesa 25.2
+    validations:
+      required: true
   - type: textarea
     id: expected
     attributes:

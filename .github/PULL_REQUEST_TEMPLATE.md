@@ -27,6 +27,7 @@ Read [CONTRIBUTING.md](https://github.com/maj113/MaiCord-plugins/blob/main/CONTR
 - [ ] `owner_id` in `catalog.json` is `.owner` in `MC_PLUGIN`, it came from `maicord-plugin new`, and it is not another plugin's. For an update it did not change.
 - [ ] I bumped `.version` (this is an update), or this is a new plugin at `1.0.0`.
 - [ ] `plugin.cpp` is the only source file.
+- [ ] It builds for Linux too (`maicord-plugin build --target linux`), with no code that only runs on Windows.
 
 **Themes**
 

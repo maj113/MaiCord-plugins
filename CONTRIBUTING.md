@@ -7,9 +7,11 @@ metadata CI checks, and the rules a maintainer reviews against. The
 Before you start:
 
 - Plugins and effects are written with `maicord-plugin`, in MaiCord's
-  repository under `tools/maicord-plugin`. You need Windows 10 or 11 x64 and
-  Python 3.9 or newer. Put that folder on `PATH`. The tool downloads MaiCord's
-  pinned clang-cl once and needs no Visual Studio. The guides are the
+  repository under `tools/maicord-plugin`. You need Python 3.9 or newer and
+  Windows 10 or 11 x64 (the tool downloads MaiCord's pinned clang-cl once and
+  needs no Visual Studio), or Linux x86-64 with clang and ld.lld on `PATH` for a
+  plugin (an effect's HLSL compiles on Windows only). Put that folder on `PATH`.
+  The guides are the
   [plugin SDK](https://github.com/maj113/MaiCord/blob/master/include/maicord/sdk/README.md)
   and [background effects](https://github.com/maj113/MaiCord/blob/master/samples/effects/README.md).
 - Read [what the catalog refuses](README.md#discords-terms-of-service) first.
@@ -34,6 +36,9 @@ Before you start:
    permissions your hooks and buttons imply; declare only what API calls need.
 3. **Build it.** `maicord-plugin build` compiles with the flags CI uses, so the
    DLL is what CI will build, then checks the PE headers and the descriptor.
+   CI also builds a Linux shared object from the same `plugin.cpp`:
+   `maicord-plugin build --target linux` (the default on Linux) builds and checks it
+   too, so a plugin that only builds for Windows is caught before the pull request.
 4. **Test it in MaiCord.** Turn on **Developer Mode** (Settings > Advanced) and
    run `maicord-plugin dev --watch`; the plugin appears under Settings >
    Plugins > Developer and reloads on every save. Press its buttons, and make
@@ -134,7 +139,8 @@ A theme can follow the clock and the month, as `themes/silk-waves` does, with a
   phases of different bases the nearer one shows whole (the switch falls
   halfway, at 03:00, 09:00, 15:00 or 21:00) and glides over 1.5 seconds, or
   happens at once with reduced motion. While the theme is on, an effect's light
-  or dark appearance follows the theme alone, not Windows.
+  or dark appearance follows the theme alone, not the system (Windows' app
+  mode or the Linux desktop's color scheme).
 - The root `colors` and `base` are what a MaiCord without variants shows (before
   0.6.4 it skips the member). The catalog lists such a theme with
   `"interface": 2`, in `index-3.json` only.
@@ -193,14 +199,16 @@ An effect is one HLSL pixel shader plus a sidecar; it runs on the GPU only.
    ("Clock", "Day", "Night"): the knob page shows a choice as a row of buttons
    as wide as their labels while they fit the card, and as a dropdown when
    they don't.
-3. **Build it:** `maicord-plugin effect build` compiles, lints (constant buffer
+3. **Build it:** `maicord-plugin effect build` compiles (on Windows; there is no
+   HLSL compiler on Linux), lints (constant buffer
    `b0`, textures `t0-t4` or `t0-t10` for a graph, samplers `s0-s2`, no UAVs,
    at most 4,096 instructions and 64 texture reads per shader) and writes
    `build\soft-rain.mcfx`. It also rewrites the sidecar (a graph's `targets`
    and `passes` lines too, which CI checks against the comments); keep its
    `resolution` and `fps` requests if you set them. You submit the HLSL and
    its sidecar only: CI builds the Linux package from them (see
-   [the indexes](#the-indexes)).
+   [the indexes](#the-indexes)); `--glsl yes --dxbc-from` makes the same
+   package yourself when the shader toolchain is there.
 4. **Try it:** turn on Developer Mode and run
    `maicord-plugin effect preview --watch`; pick the effect under Appearance >
    Background effect. `--time 18:30`, `--date 12-24`, `--day-seconds 60` and
