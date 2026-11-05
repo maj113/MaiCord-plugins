@@ -198,7 +198,9 @@ An effect is one HLSL pixel shader plus a sidecar; it runs on the GPU only.
    at most 4,096 instructions and 64 texture reads per shader) and writes
    `build\soft-rain.mcfx`. It also rewrites the sidecar (a graph's `targets`
    and `passes` lines too, which CI checks against the comments); keep its
-   `resolution` and `fps` requests if you set them.
+   `resolution` and `fps` requests if you set them. You submit the HLSL and
+   its sidecar only: CI builds the Linux package from them (see
+   [the indexes](#the-indexes)).
 4. **Try it:** turn on Developer Mode and run
    `maicord-plugin effect preview --watch`; pick the effect under Appearance >
    Background effect. `--time 18:30`, `--date 12-24`, `--day-seconds 60` and
@@ -333,24 +335,53 @@ writes a partial site: the files, the details, the previews and
 `build/index-source.json`. Look at `site\previews\` for an effect's preview.
 The build log shows each effect's WARP time and cost class.
 
+The Linux package of each effect is made afterwards, on Linux (WSL works), from
+that site, with MaiCord's pinned shader toolchain (fetched and built into
+`~/.cache/maicord-toolchain` on first use: it needs git, cmake, a C++ compiler
+and network access; `MAICORD_GLSL_TOOLCHAIN=<directory with dxc and
+mc_shadertool>` names a ready one):
+
+```bash
+python3 -B scripts/build_universal.py --maicord ../MaiCord --source build/index-source.json site
+python3 -B scripts/check_site.py --tools ../MaiCord/tools/release --source build/index-source.json --require-universal site
+```
+
 ## The indexes
 
-CI publishes the catalog as three signed indexes of one source, one per
+CI publishes the catalog as four signed indexes of one source, one per
 MaiCord reader (MaiCord's `tools/release/plugin_index.py`, `INDEXES`):
 
-| File | Read by | Signed at | Leaves out |
+| File | Read by | Signed at | Differs |
 |---|---|---|---|
-| `index-3.json` | MaiCord 0.6.4 and later | sequence + 2 | nothing |
-| `index-full.json` | 0.6.3 | sequence + 1 | themes and plugins that name an `interface` |
-| `index.json` | 0.6.0 to 0.6.2 | sequence | also effects that need an interface above 1, and a theme's link to them |
+| `index-4.json` | MaiCord on Linux | sequence + 3 | an effect's file is its interface 4 package (below) |
+| `index-3.json` | MaiCord 0.6.4 and later on Windows | sequence + 2 | nothing: every item, with each effect's DXBC package |
+| `index-full.json` | 0.6.3 | sequence + 1 | leaves out themes and plugins that name an `interface` |
+| `index.json` | 0.6.0 to 0.6.2 | sequence | also leaves out effects that need an interface above 1, and a theme's link to them |
 
-Any item in `index-3.json` may name the `interface` it needs: an effect's
-`.mcfx` interface (2 for clock or appearance, 3 for a pass graph), a theme's
-(2 for `variants`), a plugin entry's (1). MaiCord shows an item above its own
-level as needing a newer MaiCord. Its reader skips members and item kinds it
-doesn't know, so a later field only lands in `index-3.json` and never needs
-another file. Each newer client's index is signed higher, so updating MaiCord
-always moves it to an index above the one it last accepted.
+Any item in `index-3.json` and `index-4.json` may name the `interface` it
+needs: an effect's `.mcfx` interface (2 for clock or appearance, 3 for a pass
+graph, 4 for the Linux package), a theme's (2 for `variants`), a plugin
+entry's (1). MaiCord shows an item above its own level as needing a newer
+MaiCord. Its reader skips members and item kinds it doesn't know, so a later
+field only lands in these two and never needs another file. Each newer
+client's index is signed higher, so updating MaiCord always moves it to an
+index above the one it last accepted.
+
+**The Linux package.** MaiCord on Linux runs GLSL where Windows runs the
+DXBC. Every effect therefore has two files of the same version: the DXBC
+package `build_catalog.py` compiles on Windows, which `index-3.json`,
+`index-full.json` and `index.json` list as `file`, and the interface 4
+package, the same package with the manifest naming `interface` 4 and a GLSL
+section (type 10) that `scripts/build_universal.py` makes on a Linux runner
+with MaiCord's `maicord-plugin effect build --glsl yes --dxbc-from` (the
+pinned DXC and SPIRV-Cross; `tools/linux_shader_toolchain.json` in MaiCord).
+The index source names it in the effect's `universal` member, which only
+`index-4.json` shows, as `file` at `"interface": 4`; every other index is
+byte for byte what it was without it. `scripts/check_site.py` checks that the
+two packages differ only by the interface and the GLSL section
+(`plugin_index.check_universal`) and that every effect has one. A Linux client
+refuses a package without the section, and an older Windows client refuses
+interface 4, which is why neither file replaces the other.
 
 ## How previews are made
 

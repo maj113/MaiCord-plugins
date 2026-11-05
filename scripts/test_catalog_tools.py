@@ -83,6 +83,27 @@ class EffectTests(unittest.TestCase):
         with self.assertRaises(effects.EffectError):
             effects.pack_mcfx({"MANIFEST": b"{}"})
 
+    def test_universal_package_is_the_same_package_with_glsl_and_interface_4(self):
+        manifest = b'{"interface":3,"slug":"x","passes":[]}'
+        plain = effects.pack_mcfx({"MANIFEST": manifest, "DXBC": b"DXBC" + b"d" * 8, "SOURCE": b"s", "SHADERS": b"DXBC"})
+        glsl = struct.pack("<HH", 1, 0) + b"entry"
+        universal = effects.universal_package(plain, glsl)
+        old, new = effects.read_sections(plain), effects.read_sections(universal)
+        self.assertEqual(list(new), ["MANIFEST", "DXBC", "SOURCE", "SHADERS", "GLSL"], "written in section order")
+        self.assertEqual(new["MANIFEST"], b'{"interface":4,"slug":"x","passes":[]}')
+        self.assertEqual(new["GLSL"], glsl)
+        for name in ("DXBC", "SOURCE", "SHADERS"):
+            self.assertEqual(new[name], old[name], f"{name} is the DXBC package's")
+        self.assertEqual(effects.read_sections(effects.universal_package(plain.replace(b'"interface":3', b'"interface":1'), glsl))["MANIFEST"][:15],
+                         b'{"interface":4,')
+        with self.assertRaises(effects.EffectError):
+            effects.universal_package(universal, glsl)  # already has the section
+        with self.assertRaises(effects.EffectError):
+            effects.universal_package(effects.pack_mcfx({"MANIFEST": b'{"slug":"x"}', "DXBC": b"D"}), glsl)
+        for broken in (plain[:-1], plain + b"\0", b"MCFX" + plain[4:12] + b"\1" + plain[13:], b"nope"):
+            with self.assertRaises(effects.EffectError):
+                effects.read_sections(broken)
+
     def test_ambient_inputs_are_interface_2_and_stay_out_of_the_index(self):
         source = '// @effect name="X" license="MIT"\n// @blend normal\n// @uses blue_noise clock appearance\n'
         header = effects.parse_header(source)

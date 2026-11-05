@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stamp, render and sign the official MaiCord catalog's three indexes (format 2).
+"""Stamp, render and sign the official MaiCord catalog's four indexes (format 2).
 
     python -B scripts/publish_index.py --tools <MaiCord>/tools/release build/index-source.json site
 
@@ -11,11 +11,16 @@ variable and never touches the disk. The script stamps the source with:
             whose sequence is lower than the last one it accepted, or equal
             to it with different bytes, so every signing run needs a higher
             sequence. The issue time grows with every run, re-runs included.
-It then renders the documents with plugin_index.render_index (each reader's
-schema) and writes, each with its .sig (plugin_index.INDEXES):
-  index-3.json     the whole source at sequence + 2, for MaiCord 0.6.4 and
-                   later: any item may name the interface it needs, and the
-                   reader skips what it doesn't know, so later fields land here;
+It then checks the source (plugin_index.check_source), renders the documents
+with plugin_index.render_index (each reader's schema) and writes, each with its
+.sig (plugin_index.INDEXES):
+  index-4.json     reader_source(4) at sequence + 3, for the Linux client: an
+                   effect's "universal" package (the DXBC package plus the GLSL
+                   section, interface 4) is its file;
+  index-3.json     reader_source(3) at sequence + 2, for MaiCord 0.6.4 and
+                   later on Windows: every item with its DXBC package, any
+                   item may name the interface it needs, and the reader skips
+                   what it doesn't know, so later fields land here;
   index-full.json  reader_source(2) at sequence + 1, for 0.6.3: without the
                    themes and plugins that name an interface;
   index.json       reader_source(1) at sequence, for 0.6.0 to 0.6.2: also
@@ -61,7 +66,13 @@ def main() -> int:
     source["issued"] = issued
     source["expires"] = issued + arguments.validity_days * 86400
     source["sequence"] = max(int(source.get("sequence", 0)), issued)
+    plain = [i["slug"] for i in source["items"] if i["kind"] == "effect" and "universal" not in i]
+    if plain:
+        print(f"error: no interface 4 package (scripts/build_universal.py) for effect {', '.join(plain)}: the Linux "
+              "client could not run it.", file=sys.stderr)
+        return 1
     try:
+        plugin_index.check_source(source)
         documents = [plugin_index.render_index(dict(plugin_index.reader_source(source, reader),
                                                     sequence=source["sequence"] + offset), reader)
                      for _, reader, offset in plugin_index.INDEXES]

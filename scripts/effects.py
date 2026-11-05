@@ -4,19 +4,25 @@ and pack the `.mcfx` package (design section 16). Everything an effect declares 
 checks that the three agree, so the package, the preview and the index never describe different shaders.
 
 `.mcfx` container (little-endian), shared with the client's mcfx_parse:
-  header   16 bytes: "MCFX", u16 format = 1, u16 section count (<= 9), u32 file bytes, u32 0
+  header   16 bytes: "MCFX", u16 format = 1, u16 section count (<= 10), u32 file bytes, u32 0
   table    count x 16 bytes: u32 type, u32 offset, u32 bytes, u32 0
-  types    1 MANIFEST, 2 DXBC, 3 TEXTURE0, 4 TEXTURE1, 5 SOURCE, 6 PREVIEW, 7 TEXTURE2, 8 TEXTURE3, 9 SHADERS;
-           strictly ascending
+  types    1 MANIFEST, 2 DXBC, 3 TEXTURE0, 4 TEXTURE1, 5 SOURCE, 6 PREVIEW, 7 TEXTURE2, 8 TEXTURE3, 9 SHADERS,
+           10 GLSL; strictly ascending
   sections packed back to back after the table, no padding; the last one ends at the file's end
 
 The manifest's "interface" is 1; 2 when the effect uses clock or appearance (mc_ambient); 3 for a pass graph
 (`@target` / `@pass` lines: up to six passes of ps_5_0 and vs_5_0 shaders, the first pass's pixel shader in DXBC
 and the others, in order of first use, in SHADERS) or texture2/texture3. A client before an interface refuses its
-packages, so the catalog lists an interface above 1 in index-3.json (MaiCord 0.6.4 and later) and index-full.json
-(0.6.3) and leaves such an effect out of index.json (0.6.0 to 0.6.2). The index lists only INDEX_USES, the names every
-format-2 client reads (the readers before 0.6.4 refuse an unknown name, so a new one there would break the whole
-catalog for them).
+packages, so the catalog lists an interface above 1 in index-3.json (MaiCord 0.6.4 and later on Windows) and
+index-full.json (0.6.3) and leaves such an effect out of index.json (0.6.0 to 0.6.2). The index lists only
+INDEX_USES, the names every format-2 client reads (the readers before 0.6.4 refuse an unknown name, so a new one
+there would break the whole catalog for them).
+
+The Linux client runs GLSL instead of DXBC: interface 4 is the same package plus the GLSL section (type 10, made from
+the HLSL by MaiCord's `maicord-plugin effect build --glsl yes --dxbc-from`) and the manifest's "interface" set to 4.
+build_package makes the DXBC package on Windows; universal_package turns it into the interface 4 one
+(scripts/build_universal.py, on Linux), which the item lists as "universal": index-4.json carries it as the file,
+and every other index keeps the DXBC package.
 """
 
 from __future__ import annotations
@@ -47,7 +53,8 @@ BLENDS = ("normal", "screen", "add")
 RESOLUTIONS = (25, 35, 50, 75, 100)
 FRAME_RATES = (10, 15, 24, 30, 60)
 SECTION = {"MANIFEST": 1, "DXBC": 2, "TEXTURE0": 3, "TEXTURE1": 4, "SOURCE": 5, "PREVIEW": 6, "TEXTURE2": 7,
-           "TEXTURE3": 8, "SHADERS": 9}
+           "TEXTURE3": 8, "SHADERS": 9, "GLSL": 10}
+UNIVERSAL_INTERFACE = 4
 # The pass graph's limits (the client's include/maicord/render/effects/background_effect.hpp).
 GRAPH_PASSES, GRAPH_TARGETS, GRAPH_SHADERS = 6, 4, 12
 TARGET_EXTENT, FIXED_BYTES, SCALED_BYTES = 512, 8 << 20, 16
@@ -472,6 +479,43 @@ def pack_mcfx(sections: dict) -> bytes:
     if total > PACKAGE_MAX:
         raise EffectError(f"the package is {total} bytes, over {PACKAGE_MAX}")
     return package
+
+
+def read_sections(package: bytes) -> dict:
+    """name -> bytes of every section of a .mcfx, after checking its container as mcfx_parse does."""
+    names = {number: name for name, number in SECTION.items()}
+    if len(package) < 16 or package[:4] != b"MCFX":
+        raise EffectError("not a .mcfx package")
+    version, count, total, reserved = struct.unpack_from("<HHII", package, 4)
+    if version != 1 or not 1 <= count <= len(SECTION) or total != len(package) or reserved or len(package) < 16 + 16 * count:
+        raise EffectError("the package header is wrong")
+    sections, at, last = {}, 16 + 16 * count, 0
+    for index in range(count):
+        kind, offset, size, zero = struct.unpack_from("<IIII", package, 16 + 16 * index)
+        if kind not in names or kind <= last or zero or offset != at or size > len(package) - at:
+            raise EffectError("the package's section table is wrong")
+        sections[names[kind]] = package[offset:offset + size]
+        last, at = kind, at + size
+    if at != len(package):
+        raise EffectError("the package's last section does not end the file")
+    return sections
+
+
+_INTERFACE_MEMBER = re.compile(rb'\{"interface":[123],')
+
+
+def universal_package(plain: bytes, glsl: bytes) -> bytes:
+    """The interface 4 package of the DXBC package `plain` (interface 1 to 3): the same sections, the manifest naming
+    interface 4 and `glsl` as the GLSL section."""
+    sections = read_sections(plain)
+    if "GLSL" in sections:
+        raise EffectError("the package already has a GLSL section")
+    head = _INTERFACE_MEMBER.match(sections["MANIFEST"])
+    if not head:
+        raise EffectError("the manifest does not start with an interface 1 to 3")
+    sections["MANIFEST"] = b'{"interface":%d,' % UNIVERSAL_INTERFACE + sections["MANIFEST"][head.end():]
+    sections["GLSL"] = glsl
+    return pack_mcfx(sections)
 
 
 def build_package(slug: str, directory: Path, meta: dict, version: str, include: Path, fxc: str, work: Path) -> dict:

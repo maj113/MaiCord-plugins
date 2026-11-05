@@ -9,9 +9,10 @@ a details.md page and the item's source) and writes:
     files/<sha256>.dll|.json|.mcfx    the packages (plugins built from source, themes verbatim, effects packed)
     details/<sha256>.md               the item pages
     previews/<sha256>.png             theme and effect previews; effect loops (APNG) too
-    <work>/index-source.json          the format-2 index members; publish_index.py stamps, renders and signs it as
-                                      index-3.json (MaiCord 0.6.4 and later), index-full.json (0.6.3) and
-                                      index.json (0.6.0 to 0.6.2)
+    <work>/index-source.json          the format-2 index members; scripts/build_universal.py (a Linux job) adds each
+                                      effect's interface 4 package, then publish_index.py stamps, renders and signs it
+                                      as index-4.json (the Linux client), index-3.json (MaiCord 0.6.4 and later on
+                                      Windows), index-full.json (0.6.3) and index.json (0.6.0 to 0.6.2)
 
 Nothing here needs a signing key. MaiCord's checkout (sparse is enough: include/maicord/sdk, include/maicord/sys,
 src/render/effects/blue_noise_64.bin, tools/) supplies the SDK headers, the pinned LLVM toolchain, the index schema
@@ -116,9 +117,10 @@ class Previous:
 
 
 def previous_items(previous: Previous, plugin_index, public_key: str | None) -> dict:
-    """{(kind, slug): item} of the previously published index, verified when a key is given: the newest client's
-    (plugin_index.INDEXES), or before the catalog published it, the one before."""
-    for name, _, _ in plugin_index.INDEXES:
+    """{(kind, slug): item} of the previously published index, verified when a key is given: the newest complete form
+    (plugin_index.INDEXES without index-4.json, whose effects list their interface 4 package as the file; the DXBC
+    package is what this build compares with), or before the catalog published it, the one before."""
+    for name, reader, _ in plugin_index.INDEXES[1:]:
         document = previous.read(name)
         if document is not None:
             break
@@ -132,7 +134,7 @@ def previous_items(previous: Previous, plugin_index, public_key: str | None) -> 
         for key in public_key.split(","):
             try:
                 point = plugin_index.cng_p256.parse_public_point(key.strip())
-                index = plugin_index.verify_index(document, signature, point, now, accept_expired=True)
+                index = plugin_index.verify_index(document, signature, point, now, accept_expired=True, reader=reader)
                 break
             except plugin_index.PluginIndexError as error:
                 failure = error
@@ -140,7 +142,7 @@ def previous_items(previous: Previous, plugin_index, public_key: str | None) -> 
             raise BuildError(f"the previous index does not verify: {failure}")
     else:
         warn("the previous index is not verified (no --public-key)")
-        index = plugin_index.parse_index(document, now, accept_expired=True)
+        index = plugin_index.parse_index(document, now, accept_expired=True, reader=reader)
     log(f"previous: sequence {index['sequence']}, {len(index['items'])} items")
     return {(i["kind"], i["slug"]): i for i in index["items"]}
 
@@ -493,7 +495,8 @@ def effect_item(site: Site, slug: str, directory: Path, meta: dict, renderer, ca
     still, size = images.still(renderer, cso, blend, uses, knobs)
     loop, shape = images.loop(renderer, cso, blend, uses, knobs)
     # The index lists only the names every format-2 client knows (effects.INDEX_USES); clock and appearance live in
-    # the package's manifest. An interface above 1 is listed, so index.json (0.6.0 to 0.6.2) leaves the effect out.
+    # the package's manifest. An interface above 1 is listed, so index.json (0.6.0 to 0.6.2) leaves the effect out; the
+    # interface 4 package of the Linux client is added later (build_universal.py).
     return {"data": package["package"], "cost": cost, "blend": blend, "uses": [u for u in effects.INDEX_USES if u in uses],
             "interface": effects.interface_of(header),
             "knobs": header["knobs"],
@@ -619,7 +622,7 @@ def main() -> int:
               "revoked": revocations.get("revoked", []), "blocklist": revocations.get("blocklist", [])}
     for _, reader, _ in plugin_index.INDEXES:  # the catalog as each client will read it
         plugin_index.render_index(plugin_index.reader_source(source, reader), reader)
-    for name, reader, _ in plugin_index.INDEXES[1:]:
+    for name, reader, _ in plugin_index.INDEXES[2:]:
         kept = {(i["kind"], i["slug"]) for i in plugin_index.reader_source(source, reader)["items"]}
         held = sorted(f"{i['kind']} {i['slug']}" for i in items if (i["kind"], i["slug"]) not in kept)
         if held:

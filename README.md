@@ -33,10 +33,11 @@ from it, and a signed index tells MaiCord what is available.
 
 What MaiCord reads is public, on GitHub Pages:
 
-- <https://maj113.github.io/MaiCord-plugins/index-3.json> and its `.sig`,
-  which MaiCord 0.6.4 and later read; `index-full.json` (0.6.3) and
-  `index.json` (0.6.0 to 0.6.2), each with its `.sig`, are the same index
-  without what those versions can't read (see
+- <https://maj113.github.io/MaiCord-plugins/index-4.json> and its `.sig`,
+  which MaiCord on Linux reads, and <https://maj113.github.io/MaiCord-plugins/index-3.json>
+  and its `.sig`, which MaiCord 0.6.4 and later on Windows read; `index-full.json`
+  (0.6.3) and `index.json` (0.6.0 to 0.6.2), each with its `.sig`, are the same
+  index without what those versions can't read (see
   [the indexes](CONTRIBUTING.md#the-indexes))
 - `details/<sha256>.md`, `previews/<sha256>.png` and
   `files/<sha256>.dll|.json|.mcfx`, the files the index names
