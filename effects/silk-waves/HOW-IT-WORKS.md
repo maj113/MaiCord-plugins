@@ -51,8 +51,29 @@ The ribbon's skeleton is a 19 x 19 sheet of nodes, one texel each. Each step:
 - **The driven edge** (column 18) is placed on a Lissajous curve, each row a nineteenth behind the last:
   with `τ = row / 19 + lag`, `p = (0, 0.4 (½ + ½ sin 11τ), 0.1 (1 + cos 15τ))`.
 
-A new target starts from a sheet of our own run of this model (a flat start run through five wraps of the clock),
-packed as two 11:11:10-bit words per node in the shader, at `t = 0.8`. The first frame then looks like any other.
+From a flat sheet the folds take minutes to settle, and the sheet snaps about on the way, so a new target starts, at
+`t = 0.8`, from a sheet built to look like any moment of a long run. Long runs of this model hold each column, across
+the ribbon, as a chain whose links are about 0.354 long and whose nodes two apart sit about 0.608 apart (so it bends
+about 59° at every node, with no preferred twist); the chain buckles into a pleat along x of about 0.4 that turns
+about 0.8 radians per row, the same in every column, and folds back and forth in y and z about five times across
+the ribbon; and its y and z drift apart slowly from column to column. The start builds that:
+
+- `C(row)`, one chain for all columns: links of 0.354, bent 59° at every node, twisted about the link at random. Of
+  eight random twists, each node takes the one nearest its goal, `(0.42 cos(0.8 row + φ), 0, 0)`, weighing the
+  distance in x by 1 / 0.1 and in y and z by 1 / 0.4, so it follows the pleat in x and folds freely in y and z.
+  The chain is centred on its mean.
+- Column `c` turns the chain's y and z about x by `θ(c)`, a smooth random twist: `θ` grows by a rate that starts
+  normal with a deviation of 0.1 and changes by a normal 0.04 per column. So folds of distant columns lie at
+  different heights and cross, as in a long run.
+- It then sits at `x = max(0.2934 d − 0.239, 0.116 d)` with `d = 18 − c`, and at `(0.2, 0.1) + 0.06 n` in y and z,
+  `n` normal.
+- The driven edge is placed as usual, and every other node gets a velocity of 2 per axis (normal); the springs
+  bring it to a long run's speeds within a second.
+
+Run forward, this sheet keeps the speeds, spread, spring lengths, pleat, fold count and free-edge reach of a long run
+(within about a tenth), and the picture shows as many filaments crossing each other as a long run's, from the first
+seconds on. Every texel builds the whole chain from the same seeds and keeps its own node; nothing is stored in the
+shader.
 
 ## The lattice deformation
 
@@ -77,7 +98,7 @@ in x and y, the y weights of the B-spline sum out and each control point costs f
 scaled by `(3.2, scale_y, scale_z)` from the time of day's preset.
 
 At the wrap, the lattice cross-fades from the old cycle to the new over the first `0.0216` of `t` (1.8 s): the
-height and ripple are blended from `T + 100` to `T`.
+height and ripple are blended from `T + 100` to `T`. The rest of the time only `T`'s are worked out.
 
 Then the scene turns: a rotation by the preset's angle about the axis `(−0.9942, 0.0868, 0.0654)` (Rodrigues'
 formula), and an offset of `(−8.2, −1.088, −8.4)`.
@@ -155,7 +176,8 @@ smoothly: with `lift = smoothstep(1, 2, Glare)`,
 night too, but it never drops below the sky's own brightness plus a margin, so the sky doesn't glow and a bright day
 sky doesn't wash out. The bloom pass blurs that at two widths:
 `0.25 (centre + four diagonal taps at 1.06 texels) + 0.1 (four straight taps at 4 texels)`. The compose pass adds
-it after the clamp, times `min(Glare, 1) · (1 + 0.5 lift)`, so Glare 0 has no glow, then dithers.
+it after the clamp, times `min(Glare, 1) · (1 + 0.5 lift)`, so Glare 0 has no glow, then dithers. At Glare 0 the
+glare pass skips its taps and writes black.
 
 ## The time of day
 
@@ -205,9 +227,10 @@ v     = (dir.x, dir.y, 0) · speed                          (depth dropped, not 
 
 with `r` uniform in [−1, 1]. Its orientation is uniformly random (Shoemake's method) and its ageing rate is
 `0.0029 (1 + 0.5 r)` per step, a life of 4 to 11 seconds. A vertex that hardly moves gives no flake that frame. The
-state pass updates the cloth and the flakes together, so it still holds last frame's control points while a flake is
-born: the few births step the sixteen nodes around their vertex themselves (on a new target's first frame, from the
-warm start), and are born on this frame's surface.
+state pass updates the cloth and the flakes together, so it still holds the last two frames' control points while a
+flake is born: the flake takes its vertex on both of those surfaces, and its point this frame is the last one carried
+on at their pace, `p = p₁ + (p₁ − p₂) · s / s₁` (`s₁` the steps between them). On a new target's first frame the
+slots stay empty; the next frame fills them all, each partway through a life.
 
 **Motion.** With `h = 0.0089` per step:
 
@@ -248,7 +271,8 @@ film(n) = (1, 0.89, 0.85) · lerp(1, 1.4 (½ + ½ cos 2π (1.7 |n.xy| + (0, 0.33
 `film` is our own thin-film tint: warm white with pink, orange and blue. When the face turns toward the half vector
 the flake also gets a camera-facing glare halo, `5.4 · size · |n · ĥ|^35` across, falling off as `exp(−4.4 r)`. The
 halo is glare too: its brightness is scaled by `min(Glare, 1) · (1 + lift)`, so it is off at Glare 0 and doubled at
-Glare 2.
+Glare 2. A halo whose `|n · ĥ|^35` is under 0.002 is smaller than a pixel and fainter than half a step of the 8-bit
+picture, so it isn't drawn (most halos, most of the time).
 The alpha fades the flake in over its first 2 % of life and out over its last 6 %, near the box's walls, when it's
 seen edge-on, and in a thin shell just short of the far focus. A sprite smaller than two pixels is drawn at two
 pixels with its light spread, so it doesn't shimmer.

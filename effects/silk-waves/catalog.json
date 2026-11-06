@@ -16,7 +16,7 @@
     "author": "linkev (Mart): the earlier port and the inspiration",
     "license": "MIT"
   },
-  "version": "1.3.1",
+  "version": "1.4.0",
   "preview_alt": "A soft grey ribbon of folded translucent layers crossing a night sky that is black at the top and glows deep blue toward the bottom, with tiny glinting flakes around the ribbon.",
-  "changelog": "The Glare knob now does something you can see: 0 turns all glow off, 1 is the look as before, and toward 2 the ribbon's bright folds and the brightest glints bloom softly, at night too."
+  "changelog": "Faster: about 20 % less GPU time a frame (the simulation pass about 60 % less) and a slightly smaller download. The sheet a new start begins from is now worked out on the spot instead of stored, so the folds and glitter of the first moments are laid out differently; the ribbon looks and moves as before."
 }

@@ -11,7 +11,7 @@
     "ambient",
     "nature"
   ],
-  "version": "1.0.1",
+  "version": "1.0.2",
   "preview_alt": "Aurora over the default dark theme.",
-  "changelog": "Faster: about 25 % less GPU time; looks the same."
+  "changelog": "Asks for 15 frames a second instead of 24: the curtains drift slowly enough that you can't tell, and it costs about 40 % less GPU time a second. Your own frame rate setting still wins."
 }

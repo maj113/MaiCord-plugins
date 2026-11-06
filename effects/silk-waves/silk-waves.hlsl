@@ -13,7 +13,7 @@
 // light. The look follows the time of day.
 // Credit: linkev's PlayStation-3-XMB (MIT) was the earlier port and the inspiration; this one shares no code with it.
 //
-// @effect   name="Silk Waves" authors="MaiCord" license="MIT" version="1.3.1" derived_from="https://github.com/linkev/PlayStation-3-XMB|linkev (Mart)|MIT"
+// @effect   name="Silk Waves" authors="MaiCord" license="MIT" version="1.4.0" derived_from="https://github.com/linkev/PlayStation-3-XMB|linkev (Mart)|MIT"
 // @knob month   choice "By date|January|February|March|April|May|June|July|August|September|October|November|December" = 0 "Month"
 // @knob sky     choice "Clock|Night when dark|Day|Night" = 1 "Day and night"
 // @knob speed   float 0..3 = 1 "Wave speed"
@@ -214,11 +214,12 @@ float4 glided_texel(Mood target, uint index, bool fresh) {
     const float4 to = mood_texel(target, index);
     return fresh || mc.delta <= 0.0 ? to : lerp(mc_target0.Load(int3(index, kMoodRow, 0)), to, 1.0 - exp(-mc.delta / kMoodGlide));
 }
-Mood glided_mood(bool fresh) {
+// The mood's shape this frame (texels 0-2: what the control points use; the palette is left out).
+Mood glided_shape(bool fresh) {
     const Mood target = mood();
     float4 v[6];
     [unroll] for (uint i = 0; i < 6; ++i)
-        v[i] = glided_texel(target, i, fresh);
+        v[i] = i < 3 ? glided_texel(target, i, fresh) : 0.0;
     return unpack_mood(v);
 }
 
@@ -250,22 +251,27 @@ float lattice_height(float u, float T) {
 
 // A trivariate cubic B-spline free-form deformation over the lattice, scaled by `scale` on the way out. Its nodes
 // only move in x (with u) and y (with u and the across-ribbon w), so the y weights sum out. Just after the clock
-// wraps (fade < 1) the lattice is still partly the old cycle's (T + 100).
+// wraps (fade < 1) the lattice is still partly the old cycle's (T + 100); the rest of the time only this cycle's is
+// worked out.
+float lattice_shift(float4 bx, float4 bz, float3 cell, float T) {
+    float ripple = 0.0, height = 0.0;
+    [unroll] for (int c = 0; c < 4; ++c)
+        ripple += bz[c] * sin(T - 6.28 * clamp(cell.z + c - 1.0, 0.0, 3.0) * 0.25) * 0.125;
+    [unroll] for (int a = 0; a < 4; ++a)
+        height += bx[a] * lattice_height(clamp(cell.x + a - 1.0, 0.0, 7.0) * 0.125, T);
+    return kBox.y * (height + ripple) + kOriginY;
+}
 float3 deform(float3 g, float T, float fade, float3 scale) {
     const float3 box = (g - float3(0.0, kOriginY, 0.0)) / kBox;
     const float3 s = clamp(box, 0.0, 0.999) * float3(8.0, 4.0, 4.0);
     const float3 cell = floor(s);
     const float4 bx = bspline(s.x - cell.x), bz = bspline(s.z - cell.z);
-    float2 ripple = 0.0;                                // (the old cycle's, this cycle's)
-    [unroll] for (int c = 0; c < 4; ++c) {
-        const float w = 6.28 * clamp(cell.z + c - 1.0, 0.0, 3.0) * 0.25;
-        ripple += bz[c] * sin(float2(T + 100.0, T) - w) * 0.125;
-    }
-    float2 shift = 0.0;
-    [loop] for (int a = 0; a < 4; ++a) {
+    float2 shift = float2(0.0, lattice_shift(bx, bz, cell, T));
+    [branch] if (fade < 1.0)
+        shift.y = lerp(lattice_shift(bx, bz, cell, T + 100.0), shift.y, fade);
+    [unroll] for (int a = 0; a < 4; ++a) {
         const float u = clamp(cell.x + a - 1.0, 0.0, 7.0) * 0.125;
-        const float height = lerp(lattice_height(u, T + 100.0) + ripple.x, lattice_height(u, T) + ripple.y, fade);
-        shift += bx[a] * float2(kBox.x * (1.3 * u * u + 0.2 * u - 0.15), kBox.y * height + kOriginY);
+        shift.x += bx[a] * kBox.x * (1.3 * u * u + 0.2 * u - 0.15);
     }
     return (box + float3(shift, 0.0)) * scale;
 }
@@ -313,109 +319,71 @@ float2 output_scale() {
 float2 frame_uv(float2 uv) { return 0.5 + (uv - 0.5) / output_scale(); }
 
 
-// ---- the warm start: a sheet from our own run of this model (our seed, a flat start, five wraps of the clock), two
-// nodes per row: position and velocity, each packed as 11, 11 and 10 bits over the ranges below -------------------
-static const float3 kWarmLow = float3(-0.5, -0.8, -0.8), kWarmSpan = float3(6.2, 2.2, 1.8), kWarmSpeed = 24.0;
-static const uint4 kWarm[181] = {
-    uint4(2906191770,2228755344,2449172255,2161822228),uint4(2301935314,3306521363,2607879810,1171993695),
-    uint4(1923972644,2259061680,2435382735,1536345199),uint4(1856515414,1658852928,2284369144,1876716180),
-    uint4(2275796104,1944040486,2741285927,1121557426),uint4(2791754706,2162400616,2246300514,1574552614),
-    uint4(2586139404,1654797278,2040898205,1957731016),uint4(2330006078,2391703991,2074159572,2773959953),
-    uint4(2342873457,1427895360,2287974662,2748971992),uint4(2346750117,2149581824,2691505977,1432249741),
-    uint4(2394052333,2296404984,2049996425,2971319362),uint4(2339073582,1189078083,2242473416,1970003248),
-    uint4(2502401369,1733409459,2389032206,2049510576),uint4(2640512154,1366094569,2221114433,2288741690),
-    uint4(2342308830,2044480215,2791508868,2178691550),uint4(2548079387,1322674915,2514533039,2901472354),
-    uint4(2094881387,2052967612,1972945416,3267937070),uint4(1570466221,2166760562,1608454478,1865104927),
-    uint4(1424064758,2308217864,2380101797,2149581824),uint4(2649691896,1931758791,2234625661,1940024401),
-    uint4(2267987483,2149196743,2431305154,2649349417),uint4(2376674657,618468668,2351090956,2018661532),
-    uint4(2422457506,2056811226,2653121596,2274827627),uint4(2464357336,1394297885,2485089146,2334590023),
-    uint4(2233801506,2963254396,2451237555,2691198481),uint4(2334241360,1062794535,2161824255,3038819579),
-    uint4(2006493591,1943862727,1360609619,1829891152),uint4(1159741705,1298023710,1134299280,2888943203),
-    uint4(2279225509,2149581824,1785237159,1516490065),uint4(1869110863,2808924806,1965563352,3151740007),
-    uint4(2011219345,2597203065,1709376791,2615610917),uint4(1524704458,1662151731,1659112535,2728087420),
-    uint4(1725850624,1003805702,1541542797,2384683846),uint4(1936087869,1767877649,1944416993,2891441547),
-    uint4(1709099644,2820635557,1629784592,3563140188),uint4(1537167797,1881357279,1633599822,1633936477),
-    uint4(1625600241,2195307012,1252282520,2955418643),uint4(2044612685,1138129797,2098718885,2149581824),
-    uint4(1419994845,1688243369,1046826612,2133080917),uint4(1486882319,1524712114,1197835697,2401238010),
-    uint4(1080419670,3714312788,925160693,2828391280),uint4(933598349,2283295089,1214202921,2170825384),
-    uint4(1067787220,1784734524,1273459566,2758048812),uint4(958501641,2372488620,1445302945,2795832121),
-    uint4(879090242,2741044007,1206278632,3161040334),uint4(1315512700,2115943460,1911109951,2773619744),
-    uint4(2238245077,3160521542,2677967045,2644478586),uint4(1947682981,2149581824,1319046988,1768543400),
-    uint4(1138970359,2133449744,1625816729,2371892228),uint4(916653615,2127977501,1223013838,2958891822),
-    uint4(870706537,2976126021,958702855,2686731098),uint4(1054856350,2485964124,950299711,1725906210),
-    uint4(1260940259,1696168832,1088279422,2435021631),uint4(1218906910,1410259841,1289763511,1712860496),
-    uint4(1336314459,1499182192,1529278964,2102315943),uint4(2238067117,980822854,2082873648,3211330865),
-    uint4(2707292417,1362031831,1914212517,2149581824),uint4(1314490248,1617378707,1423830826,1369768956),
-    uint4(1218236095,1504119864,1835095652,942185744),uint4(1495401992,1994879902,1486818712,3085149381),
-    uint4(1314710847,2040939006,1822559443,1758809136),uint4(1524475015,1708955015,1394564130,2149960336),
-    uint4(1746756528,1544813516,1373553501,1746738048),uint4(1503398631,1156291796,1642160795,2079445524),
-    uint4(1554016798,2379551659,2229113315,2279883911),uint4(1407070553,2771680274,1574721851,1517147154),
-    uint4(2019248293,2149581824,2308253610,1264196492),uint4(1989551926,703425145,2149111529,2741065046),
-    uint4(2228979311,2925874627,2119869985,1852294165),uint4(2052787630,2221814538,1964668234,2896757664),
-    uint4(2207700196,1721785640,2279382146,1922899487),uint4(2262529056,2359049466,2526694321,1075544955),
-    uint4(1977228122,1659402918,2169780989,1274506219),uint4(2061005458,2087412444,1758886450,841661179),
-    uint4(1930717642,2129128487,1796573528,2314040406),uint4(1578316014,2095057514,2199820453,2149581824),
-    uint4(2635593527,1805808709,2492884699,2284578052),uint4(2463938166,1814033755,3008996882,3304428265),
-    uint4(2471855559,3529077891,2589168983,1029126883),uint4(2593355010,2736839856,2568256664,1297960357),
-    uint4(2883206208,2489091408,2480337860,2523224634),uint4(3008834419,1154800138,2572770052,2543990106),
-    uint4(2937594533,1054962538,2425539147,2381929722),uint4(2543047159,2170819403,2320374159,2591409250),
-    uint4(2706831674,1868544704,2576574679,2018362763),uint4(2351001765,2149581824,2438489817,1517112120),
-    uint4(2191150712,2359645432,1994081820,2241469146),uint4(2408938948,1524306932,2383863133,1691214502),
-    uint4(2409139437,2717551517,2388061315,2673933018),uint4(2707096612,1134185315,2824645580,2765556791),
-    uint4(2732145515,2212920722,2887588605,2009877706),uint4(2782153394,2602101954,2631502414,2190642521),
-    uint4(2866063845,2917383511,2647818634,3181325437),uint4(2639040807,1700875385,2811275462,937689736),
-    uint4(2912540840,2438767159,2380454053,2149581824),uint4(1943279235,1452747737,1754598970,2564751734),
-    uint4(1834200516,1537186853,2358510965,2846090158),uint4(2450681084,2733390585,2417124507,1721756510),
-    uint4(2211580981,1516053557,2241260500,1968669691),uint4(2434270074,2087044379,2509495040,1945590233),
-    uint4(2568035009,1838736468,2488840777,2043408565),uint4(2379340281,698391931,2241229203,697195225),
-    uint4(2060572971,904033467,2362683585,2559937442),uint4(2295496803,3428518699,2015510616,1641242954),
-    uint4(2271369381,2149581824,1556926086,2182437245),uint4(1489741354,2955369148,1385121220,1645902799),
-    uint4(1389196635,1923816461,1623934207,2172901982),uint4(1464736915,2400898366,1267674170,2423338162),
-    uint4(1322683358,2502816640,1591178102,1847524414),uint4(1444647701,1605133545,1670763189,3018134049),
-    uint4(1776013896,1779824067,1582561766,2270565151),uint4(1590978954,1291116070,1448714535,1666183998),
-    uint4(1255424198,2107529775,1523493001,2065315382),uint4(1922682921,2299300886,2090870949,2149581824),
-    uint4(1543808747,2761759416,1325825690,1978041495),uint4(982228544,2253941443,1221369290,2433890700),
-    uint4(1426908548,732358047,1297059083,2929284248),uint4(1246743735,1319111393,1297087558,2074062415),
-    uint4(1305762791,2049168221,1280744314,1477792484),uint4(1293384466,2304818416,1398487736,1488257793),
-    uint4(1066955337,2467877964,907512299,921812172),uint4(823468412,800722499,1259845933,1213807369),
-    uint4(923857076,1466586014,1783722110,1044890713),uint4(1943861413,2149581824,1644824400,2254195191),
-    uint4(1841999591,1299272577,1615851150,2350904269),uint4(1674470938,2971562901,1804455354,2786728925),
-    uint4(1636861260,1528663375,1838185720,1906295419),uint4(1695777949,1759732849,1276376118,1994142856),
-    uint4(1595145156,1504306074,1242788723,1667908482),uint4(1242919687,867306433,1159203503,882199704),
-    uint4(1423565384,1986659448,991607277,3566730400),uint4(1071319431,2510210465,831914285,2556560499),
-    uint4(1263780056,1316654226,1914294437,2149581824),uint4(2299514726,3206812835,1897015088,2480685786),
-    uint4(1851135668,2770176947,2219855454,895288596),uint4(2412942843,1507945480,1679289785,2401434933),
-    uint4(1901671764,1487160268,1771652322,2254986195),uint4(1604127888,1745707956,2077959203,1844070170),
-    uint4(1495096267,1679133489,1943616368,2405209429),uint4(1855808243,2669497097,1637571228,2225812257),
-    uint4(1511631406,1490891428,1662886354,2275646140),uint4(1327112540,2011820657,1641986304,2740237206),
-    uint4(2023209125,2149581824,2342086563,2447586335),uint4(2270957338,2695312273,2702915294,2003197037),
-    uint4(2652468823,2866352982,2438786564,1541041473),uint4(2187423128,2598535937,2342620484,2112083191),
-    uint4(2355201236,1830255557,2153823350,1722310048),uint4(2283969544,1384893734,2275333033,2836562706),
-    uint4(2321552199,1771498664,2330047218,1957786802),uint4(2711435906,3185159544,2337843773,1654715395),
-    uint4(2190836189,2057840103,2220474732,2194345435),uint4(2279559472,2229272459,2207735973,2149581824),
-    uint4(2552282919,2586618952,2757574361,2874940561),uint4(3193888387,2762945643,3378157073,1876611971),
-    uint4(3084996031,2745707183,2896270689,1691050914),uint4(2691007736,2359313393,2632350868,2430196694),
-    uint4(2602910766,1957004410,3169149919,1852203993),uint4(2510682981,2124590222,2858640156,1742211813),
-    uint4(2833826474,2308537646,2846044736,2114535896),uint4(3046720069,1205208538,2866041308,2505671585),
-    uint4(2782310765,2631256831,2752827686,1927207986),uint4(2354634917,2149581824,2895875820,1864039469),
-    uint4(3009425010,1134613494,2850020893,2648867840),uint4(3294549418,3013610534,2942557523,1490643914),
-    uint4(2942686444,1696254933,3051693190,2066510458),uint4(2946999336,2057913253,2733089727,1775938422),
-    uint4(2989114197,1015583912,2724825849,1483233903),uint4(2821141142,2803028989,3265555008,2908088996),
-    uint4(3915409935,1964608417,3809991146,1273537501),uint4(3562078621,1813825933,3537389851,1814168543),
-    uint4(3117744351,2670010914,2375796901,2149581824),uint4(3327913602,1507738222,3114245651,3265410152),
-    uint4(3072069048,1611717784,3055058259,1130242988),uint4(2694634744,2056827999,2841666722,1541731588),
-    uint4(2850128950,2292259949,3047269344,2984903657),uint4(2820494189,2690784020,3382833952,2819224303),
-    uint4(3038870203,1974073998,3030626905,916239279),uint4(3622029840,1566588496,3781091750,2469229412),
-    uint4(3725894052,1323826082,3373457696,2838097143),uint4(3642050760,2061998876,2887465071,2334432414),
-    uint4(2266962085,2149581824,0,0)
-};
-// A node of the warm start: its position and velocity.
-void warm_node(uint index, out float3 position, out float3 velocity) {
-    const uint4 pair = kWarm[index >> 1];
-    const uint2 word = (index & 1u) ? pair.zw : pair.xy;
-    const float3 scale = 1.0 / float3(2047.0, 2047.0, 1023.0);
-    position = float3(word.x & 2047u, (word.x >> 11) & 2047u, word.x >> 22) * scale * kWarmSpan + kWarmLow;
-    velocity = (float3(word.y & 2047u, (word.y >> 11) & 2047u, word.y >> 22) * scale - 0.5) * kWarmSpeed;
+// ---- the start: a sheet as the model holds it after a long run, made up on the spot ------------------------------
+// From a flat sheet the folds take minutes to settle (and the sheet snaps about on the way), so a new target starts
+// from a sheet built to look like any moment of a long run: the same spring lengths, pleat, folds, spread, speeds and
+// layering as our runs of this model hold. Across the ribbon every column follows one curve, a chain of links 0.354
+// long that bends 59 degrees at every node (so nodes two apart sit 0.608 apart, as in the long run) and twists about
+// its links at random. Of eight random twists each node takes the one nearest its goal: in x a pleat of 0.42 that
+// turns 0.8 radians per row (the long run's buckling of the sheet), in y and z the middle, held loosely, so the chain
+// folds back and forth in y and z as often as the long run's. Along the ribbon that curve turns about x a little more
+// or less from one column to the next (a smooth random twist), so the folds of distant columns lie at different
+// heights and cross, and the columns sit where the free edge's pull leaves them, each moved a little in y and z at
+// random. Each node then gets a random velocity. Every texel builds the whole chain from the same seeds (it is
+// centred on its mean) and keeps its own node.
+static const float kStartLink = 0.354, kStartBend = 1.0297, kStartChoices = 8.0;
+static const float kStartPleat = 0.42, kStartPleatTurn = 0.8;
+static const float3 kStartReach = float3(0.1, 0.4, 0.4); // how far from its goal a node may stray, per axis
+static const float kStartTwist = 0.1, kStartTwistDrift = 0.04;   // the twist per column, and its change per column
+static const float kStartSpread = 0.06, kStartSpeed = 2.0, kStartSeed = 6300.0;
+float3 start_normal(float index, float seed) {         // three normal deviates (Irwin-Hall of four)
+    const float4 a = mc_hash4(float2(index, seed)), b = mc_hash4(float2(index, seed + 1.0)), c = mc_hash4(float2(index, seed + 2.0));
+    return (float3(dot(a, 1.0), dot(b, 1.0), dot(c, 1.0)) - 2.0) * sqrt(3.0);
+}
+void start_node(int row, int column, out float3 position, out float3 velocity) {
+    const float phase = mc_hash4(float2(3.0, kStartSeed + 10.0)).x * 2.0 * kPi;
+    float3 p = float3(kStartPleat * cos(phase), 0.2 * start_normal(0.0, kStartSeed + 10.0).yz);
+    float3 t = normalize(start_normal(1.0, kStartSeed + 10.0));
+    float3 n = normalize(cross(t, start_normal(2.0, kStartSeed + 10.0)));
+    float3 sum = p, mine = p;
+    float2 bend;
+    sincos(kStartBend, bend.x, bend.y);
+    [loop] for (int i = 0; i < 18; ++i) {
+        const float3 goal = float3(kStartPleat * cos(kStartPleatTurn * (i + 1) + phase), 0.0, 0.0);
+        float best = 1e30;
+        float3 next = t, side = n;
+        [loop] for (float k = 0.0; k < kStartChoices; k += 1.0) {
+            float2 twist;
+            sincos((mc_hash4(float2(i * 8 + k, kStartSeed + 1.0)).x - 0.5) * 2.0 * kPi, twist.x, twist.y);
+            const float3 axis = n * twist.y + cross(t, n) * twist.x;   // perpendicular to the link
+            const float3 link = t * bend.y + cross(axis, t) * bend.x;
+            const float3 q = (p + kStartLink * link - goal) / kStartReach;
+            if (dot(q, q) < best) {
+                best = dot(q, q);
+                next = link;
+                side = axis;
+            }
+        }
+        n = normalize(side - dot(side, next) * next);
+        t = next;
+        p += kStartLink * t;
+        sum += p;
+        if (i + 1 == row)
+            mine = p;
+    }
+    float3 u = mine - sum / 19.0;
+    float rate = kStartTwist * start_normal(19.0, kStartSeed + 2.0).z, turned = 0.0;
+    [loop] for (int k = 0; k <= column; ++k) {
+        rate += kStartTwistDrift * start_normal(k, kStartSeed + 2.0).z;
+        turned += rate;
+    }
+    float2 spin;
+    sincos(turned, spin.x, spin.y);
+    u.yz = float2(u.y * spin.y - u.z * spin.x, u.y * spin.x + u.z * spin.y);
+    const float d = 18.0 - column;
+    const float2 offset = kStartSpread * start_normal(column, kStartSeed + 2.0).xy;
+    position = float3(max(0.2934 * d - 0.239, 0.116 * d), 0.2 + offset.x, 0.1 + offset.y) + u;
+    velocity = kStartSpeed * start_normal(row * 19 + column, kStartSeed + 5.0);
 }
 // ---- pass 1, the state: the cloth (rows 0-76, columns 0-18) and the glitter flakes (rows 77-172) ---------------
 // One frame of a node's simulation from the state the frame before: its position, velocity, the clock and the
@@ -455,17 +423,21 @@ void step_node(int row, int column, out float3 node, out float3 velocity, out fl
     }
 }
 
-// A node after this frame's step, or on a new target's first frame from the warm start (`past`: a step before it).
+// A node after this frame's step, or on a new target's first frame from the start (`past`: a step before it).
 void node_after(int row, int column, bool fresh, bool past, out float3 node, out float3 velocity, out float t,
                 out float lag) {
     [branch] if (fresh) {
-        warm_node(row * 19 + column, node, velocity);
+        start_node(row, column, node, velocity);
         t = kStartClock;
         lag = kStartLag;
-        if (past) {
-            node = column == 18 ? driven_edge(row, kStartLag - kStep) : node - velocity * kStep;
-            t -= kStep;
+        if (column == 18) {
+            node = driven_edge(row, kStartLag - (past ? kStep : 0.0));
+            velocity = 0.0;
+        } else if (past) {
+            node -= velocity * kStep;
         }
+        if (past)
+            t -= kStep;
     } else {
         step_node(row, column, node, velocity, t, lag);
     }
@@ -487,14 +459,11 @@ float3 rotate(float4 q, float3 v) { return v + 2.0 * cross(q.xyz, cross(q.xyz, v
 // while a streak runs, one every other frame stepping along the ribbon from a random start. Here every free slot is
 // filled at once, so a birth takes a random vertex, or (one in sixteen while a streak runs) the streak's. The streaks
 // are laid out on the wave clock: one per 300 steps of 60 Hz, after a short wait.
-uint2 birth_vertex(float4 r, float choice, bool fresh) {
+uint2 birth_vertex(float4 r, float choice) {
     uint2 vertex = uint2(r.xy * 127.0);                 // (along, across), 0-126 each
-    float t = kStartClock;                              // the wave clock after this frame's step
-    if (!fresh) {
-        t = mc_target0.Load(int3(0, 19, 0)).w + kStep * frame_steps();
-        if (t > kWrap)
-            t = 0.0;
-    }
+    float t = mc_target0.Load(int3(0, 19, 0)).w + kStep * frame_steps();   // the wave clock after this frame's step
+    if (t > kWrap)
+        t = 0.0;
     const float frame_ = floor(t / kStep);
     const float slot = floor(frame_ / 300.0), since = frame_ - slot * 300.0;
     const float4 streak = mc_hash4(float2(slot, 4242.0));
@@ -559,86 +528,55 @@ bool flake_moves(float id, inout float4 place, inout float4 motion, inout float4
 
 // The state pass. A cloth texel steps its node (block 0 its position, 1 its velocity and the clock, 2 its control
 // point now with the edge's clock in w, 3 the control point a frame ago with the steps between). A flake texel moves
-// its flake (block 0 its place and age, 1 its velocity and ageing rate, 2 its orientation); a newborn flake needs the
-// surface around its vertex this frame, but the state still holds last frame's control points, so it steps the
-// sixteen nodes around the vertex itself (only births pay for it; on a new target's first frame both its points come
-// from the warm start). One loop over nodes serves both.
+// its flake (block 0 its place and age, 1 its velocity and ageing rate, 2 its orientation). A newborn flake takes
+// the surface around its vertex from the control points of the last two frames, carried on by this frame's steps,
+// and on a new target's first frame every slot stays empty: the next frame fills them all, partway through a life.
 float4 state(float4 position : SV_Position) : SV_Target {
     const uint2 texel = uint2(position.xy);
-    const bool fresh = mc_target0.Load(int3(0, 0, 0)).w == 0.0, flake = texel.y >= (uint)kFlakeRow;
-    const uint block = flake ? (texel.y - kFlakeRow) >> 5 : texel.y / 19u;
-    float4 value = 0.0;
-    [branch] if (texel.y == kMoodRow) {
-        if (texel.x < 6u)
-            value = glided_texel(mood(), texel.x, fresh);
-    } else if (!flake && texel.x >= 19u) {
-        // Unused.
-    } else if (!flake && block == 3 && !fresh) {
-        value = float4(mc_target0.Load(int3(texel.x, texel.y - 19u, 0)).xyz, frame_steps());
-    } else {
-        const int2 slot = int2(texel.x, (texel.y - kFlakeRow) & 31u);
-        const float id = slot.y * 64 + slot.x;
-        float4 place = 0.0, motion = 0.0, orientation = 0.0, a = 0.0, b = 0.0, c = 0.0;
-        bool settled = false, born = false;
-        float2 uv = 0.0;
-        int2 origin = int2(texel.x, texel.y - block * 19u);     // the node (column, row), or the patch's corner
-        float4 bu = float4(1.0, 0.0, 0.0, 0.0), bv = bu;        // a cloth texel's node counts whole
-        int count = 1;
-        bool control = block >= 2;                              // whether the loop needs control points
-        [branch] if (flake) {
-            place = mc_target0.Load(int3(slot + int2(0, kFlakeRow), 0));
-            motion = mc_target0.Load(int3(slot + int2(0, kFlakeRow + 32), 0));
-            orientation = mc_target0.Load(int3(slot + int2(0, kFlakeRow + 64), 0));
-            // A slot that has never held a flake (a new target) fills partway through a life; one whose flake died
-            // fills anew.
-            settled = motion.w == 0.0;
-            born = settled;
-            [branch] if (!settled)
-                born = flake_moves(id, place, motion, orientation);
-            count = 0;
-            [branch] if (born) {
-                a = mc_hash4(float2(id + 8192.0, mc.frame));
-                b = mc_hash4(float2(id + 16384.0, mc.frame));
-                c = mc_hash4(float2(id + 24576.0, mc.frame));
-                const uint2 vertex = birth_vertex(a, c.w, fresh);
-                uv = float2(vertex >> 3) + float2(vertex & 7u) * (16.0 / 127.0);
-                origin = min(int2(uv), 15);
-                bu = bspline(uv.x - origin.x);
-                bv = bspline(uv.y - origin.y);
-                count = fresh ? 32 : 16;
-                control = true;
-            }
-        }
-        const Mood m = glided_mood(fresh);
-        float3 node = 0.0, velocity = 0.0, now = 0.0, before = 0.0, row_ = 0.0;
-        float t = 0.0, lag = 0.0;
-        [loop] for (int i = 0; i < count; ++i) {
-            const bool past = flake ? i >= 16 : block == 3;
-            const int across = flake ? (i >> 2) & 3 : 0, along = flake ? i & 3 : 0;
-            node_after(origin.y + across, origin.x + along, fresh, past, node, velocity, t, lag);
-            [branch] if (control)
-                row_ += bu[along] * control_point(node, t, m);
-            if (along == 3 || !flake) {
-                if (past)
-                    before += bv[across] * row_;
-                else
-                    now += bv[across] * row_;
-                row_ = 0.0;
-            }
-        }
-        if (!flake) {
-            value = block == 0 ? float4(node, 1.0) : block == 1 ? float4(velocity, t) : block == 2 ? float4(now, lag) : float4(before, 1.0);
-        } else {
-            [branch] if (born) {
-                float3 along_, across_;
-                if (!fresh)
-                    surface(uv, 38, before, along_, across_);
-                spawn(now, before, fresh ? 1.0 : frame_steps(), a, b, c, settled, place, motion, orientation);
-            }
-            value = block == 0 ? place : block == 1 ? motion : orientation;
-        }
+    const bool fresh = mc_target0.Load(int3(0, 0, 0)).w == 0.0;
+    [branch] if (texel.y == kMoodRow)
+        return texel.x < 6u ? glided_texel(mood(), texel.x, fresh) : 0.0;
+    [branch] if (texel.y < (uint)kFlakeRow) {
+        const uint block = texel.y / 19u;
+        if (texel.x >= 19u)
+            return 0.0;                                 // unused
+        [branch] if (block == 3 && !fresh)
+            return float4(mc_target0.Load(int3(texel.x, texel.y - 19u, 0)).xyz, frame_steps());
+        float3 node, velocity;
+        float t, lag;
+        node_after(texel.y - block * 19u, texel.x, fresh, block == 3, node, velocity, t, lag);
+        [branch] if (block < 2)
+            return block == 0 ? float4(node, 1.0) : float4(velocity, t);
+        return float4(control_point(node, t, glided_shape(fresh)), block == 2 ? lag : 1.0);
     }
-    return value;
+    if (fresh)
+        return 0.0;
+    const uint block = (texel.y - kFlakeRow) >> 5;
+    const int2 slot = int2(texel.x, (texel.y - kFlakeRow) & 31u);
+    const float id = slot.y * 64 + slot.x;
+    float4 place = mc_target0.Load(int3(slot + int2(0, kFlakeRow), 0));
+    float4 motion = mc_target0.Load(int3(slot + int2(0, kFlakeRow + 32), 0));
+    float4 orientation = mc_target0.Load(int3(slot + int2(0, kFlakeRow + 64), 0));
+    // A slot that has never held a flake (a new target) fills partway through a life; one whose flake died fills anew.
+    const bool settled = motion.w == 0.0;
+    bool born = settled;
+    [branch] if (!settled)
+        born = flake_moves(id, place, motion, orientation);
+    [branch] if (born) {
+        const float4 a = mc_hash4(float2(id + 8192.0, mc.frame));
+        const float4 b = mc_hash4(float2(id + 16384.0, mc.frame));
+        const float4 c = mc_hash4(float2(id + 24576.0, mc.frame));
+        const uint2 vertex = birth_vertex(a, c.w);
+        const float2 uv = float2(vertex >> 3) + float2(vertex & 7u) * (16.0 / 127.0);
+        float3 before, older, along, across;
+        surface(uv, 38, before, along, across);
+        surface(uv, 57, older, along, across);
+        // This frame's point, carried on from the last two at their pace.
+        const float steps = frame_steps(), gap = mc_target0.Load(int3(0, 57, 0)).w;
+        const float3 now = before + (gap > 1e-3 ? (before - older) * (steps / gap) : 0.0);
+        spawn(now, before, steps, a, b, c, settled, place, motion, orientation);
+    }
+    return block == 0 ? place : block == 1 ? motion : orientation;
 }
 
 // ---- pass 2: the wave, additively into the light target ------------------------------------------------------
@@ -730,10 +668,12 @@ float3 sky(float2 uv, Mood m) {
 // At Glare 1 and below, only light past the tone map's white glares (the night scene has none). Above 1 the threshold
 // drops smoothly, to 0.2 at Glare 2, so the ribbon's bright folds bloom softly, at night too; it never drops below
 // the sky itself (plus a margin), so the sky doesn't glow and a bright day sky doesn't wash out. The sky is smooth,
-// so it is taken once.
+// so it is taken once. At Glare 0 nothing glares, and this pass only writes black.
 static const float kBloomDrop = 0.8, kBloomMargin = 0.06, kBloomGain = 0.5, kHaloGain = 1.0;
 float bloom_lift() { return smoothstep(1.0, 2.0, knob_glare); }
 float4 glare(float4 position : SV_Position) : SV_Target {
+    [branch] if (knob_glare <= 0.0)
+        return 0.0;
     const Mood m = stored_mood();
     const float2 texel = 1.0 / mc.resolution, uv = position.xy * (1.0 / mc_pass.size);
     const float3 base = sky(frame_uv(uv), m);
@@ -802,6 +742,15 @@ GlintVertex glint_vs(uint vertex_id : SV_VertexID, uint instance_id : SV_Instanc
     const float3 p = place.xyz, toward = kEye - p;
     const float d = length(toward);
     const float3 eye = toward / d;
+    const float3 face = rotate(q, float3(0.0, 0.0, 1.0));
+    const float highlight = pow(abs(dot(face, normalize(normalize(kLamp - p) + eye))), 35.0);
+    GlintVertex output = (GlintVertex)0;
+    output.position = float4(0.0, 0.0, 0.0, 1.0);      // nothing to draw: a degenerate quad
+    // A halo spans 5.4 flake sizes times the highlight: below 0.002 it is under a pixel and under half a step of the
+    // 8-bit picture, so most halos, most of the time, stop here (and all of them at Glare 0, and everything at
+    // Glitter 0).
+    [branch] if (motion.w == 0.0 || knob_glitter <= 0.0 || (halo && (highlight < 0.002 || knob_glare <= 0.0)))
+        return output;
     // Depth of field: blurred nearer than 7.4 and beyond 12.8, with a world size that grows out of focus.
     const float near_ = saturate((d - kFocus.y) / (kFocus.x - kFocus.y)), far_ = saturate((d - kFocus.z) / (kFocus.w - kFocus.z));
     const float near_blur = pow(near_, 2.5), far_blur = pow(far_, 1.8);
@@ -810,7 +759,6 @@ GlintVertex glint_vs(uint vertex_id : SV_VertexID, uint instance_id : SV_Instanc
     // Near or small flakes turn toward the camera.
     const float facing_camera = saturate((d - kFocus.z + 0.4) / 0.2);
     const float4 turned = normalize(lerp(q, float4(0.0, 0.0, 0.0, 1.0), saturate(angle * 13.2 + near_blur * 0.72 + facing_camera)));
-    const float3 face = rotate(q, float3(0.0, 0.0, 1.0));
     // Fades in over its first 2 % of life and out over its last 6 %, near the edges of its box, edge-on to the eye,
     // in a thin shell just short of the far focus, and darkens with blur.
     const float age = place.w;
@@ -820,7 +768,6 @@ GlintVertex glint_vs(uint vertex_id : SV_VertexID, uint instance_id : SV_Instanc
     const float edge_on = abs(halo ? eye.z : dot(eye, rotate(turned, float3(0.0, 0.0, 1.0))));
     const float alpha = (1.0 - pow(saturate(1.0 - edge_on), 4.0 / 3.0)) * min(age, 0.02) * 50.0 * (1.0 - max(age - 0.94, 0.0) / 0.06)
                       * shell * (1.0 - saturate(far_ * angle * 13.9)) * (1.0 - saturate(near_ * angle * 6.24)) * fade.x * fade.y * fade.z;
-    const float highlight = pow(abs(dot(face, normalize(normalize(kLamp - p) + eye))), 35.0);
     float3 corner;
     float gain = 1.0;
     if (halo) {
@@ -833,16 +780,14 @@ GlintVertex glint_vs(uint vertex_id : SV_VertexID, uint instance_id : SV_Instanc
         corner = p + size * grow * ((uv.x - 0.5) * rotate(turned, float3(1.0, 0.0, 0.0)) + (uv.y - 0.5) * rotate(turned, float3(0.0, 1.0, 0.0)));
     }
     const float4 clip = clip_of(corner - kEye);
-    GlintVertex output;
-    output.position = float4(clip.xy * output_scale(), 0.0, clip.w);
+    if (clip.w >= 0.1)
+        output.position = float4(clip.xy * output_scale(), 0.0, clip.w);
     output.disc = float4(uv, saturate(near_blur + far_blur), lerp(0.85, 3.8, near_blur));
     output.normal = float4(face, alpha * gain * knob_glitter);
     output.place = float4(corner, halo ? 1.0 : 0.0);
     // The halo is glare too: Glare 0 removes it, Glare 2 doubles it.
     output.halo = alpha * (1.0 - exp(-0.039 * highlight * 75.0 * film_tint(face))) * 0.16 * knob_glitter
                 * min(knob_glare, 1.0) * (1.0 + kHaloGain * bloom_lift());
-    if (motion.w == 0.0 || clip.w < 0.1)
-        output.position = float4(0.0, 0.0, 0.0, 1.0);   // nothing yet: a degenerate quad
     return output;
 }
 
