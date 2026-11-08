@@ -58,7 +58,7 @@ EXTRA_KEYS = {"plugin": {"owner_id", "changelog"},
               "effect": {"version", "changelog", "preview_alt"}}
 PLUGIN_COMPILE = ["/nologo", "/c", "/std:c++latest", "/clang:-nostdinc", "/O2", "/W4", "/WX", "/utf-8", "/Zl", "/GS-",
                   "/GR-", "/permissive-", "/clang:-fno-asynchronous-unwind-tables", "/clang:-fno-unwind-tables",
-                  "/DMC_RUNTIME"]
+                  "/clang:-fno-builtin-strlen", "/clang:-fno-builtin-wcslen", "/DMC_RUNTIME"]
 PLUGIN_LINK = ["/nologo", "/DLL", "/NOENTRY", "/NODEFAULTLIB", "/SUBSYSTEM:WINDOWS,6.02", "/DYNAMICBASE",
                "/HIGHENTROPYVA", "/NXCOMPAT", "/CETCOMPAT", "/OPT:REF", "/OPT:ICF=8", "/INCREMENTAL:NO", "/ALLOWBIND:NO",
                "/MERGE:.pdata=.rdata", "/DEBUG:NONE", "/Brepro", "/mllvm:-enable-machine-outliner"]
