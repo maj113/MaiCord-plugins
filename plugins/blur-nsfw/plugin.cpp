@@ -23,5 +23,5 @@ static void changed(Ctx& ctx, const SettingChanged&) {
 }
 
 MC_HOOKS(mc::filter<decorate, MC_FILTER_HAS_MEDIA>, changed);
-MC_PLUGIN(.owner = 0x6D63'626C'726E'7366, .name = "Blur NSFW", .version = "1.0.0",
+MC_PLUGIN(.owner = 0x6D63'626C'726E'7366, .name = "Blur NSFW", .version = "1.0.1",
           .summary = "Blurs the images and videos of age-restricted channels.");

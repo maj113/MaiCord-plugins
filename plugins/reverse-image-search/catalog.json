@@ -11,5 +11,6 @@
   "categories": [
     "utility"
   ],
-  "owner_id": "0x6D6372696D677372"
+  "owner_id": "0x6D6372696D677372",
+  "changelog": "Now also runs in MaiCord on Linux."
 }

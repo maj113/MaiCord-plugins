@@ -19,5 +19,5 @@ static void pre_edit(Ctx& ctx, EditDraft& draft) {
 }
 
 MC_HOOKS(pre_send, pre_edit); // kinds come from Draft& / EditDraft&; implies message_send
-MC_PLUGIN(.owner = 0x6D63'636C'7572'6C73, .name = "Clear URLs", .version = "1.0.0",
+MC_PLUGIN(.owner = 0x6D63'636C'7572'6C73, .name = "Clear URLs", .version = "1.0.1",
           .summary = "Removes tracking parameters from links you send.");

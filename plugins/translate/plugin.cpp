@@ -146,6 +146,6 @@ MC_COMMAND(tr, (Str text), "Translate text and put it in the composer", .args = 
 }
 
 MC_HOOKS(decorate, on_hide, pre_send);
-MC_PLUGIN(.owner = 0x6D63'7472'616E'736C, .name = "Translate", .version = "1.0.0",
+MC_PLUGIN(.owner = 0x6D63'7472'616E'736C, .name = "Translate", .version = "1.0.1",
           .summary = "Translate messages with Google or DeepL.", .permissions = MC_PERM_COMPOSER,
           .network = {"translate.googleapis.com", "api-free.deepl.com", "api.deepl.com"});

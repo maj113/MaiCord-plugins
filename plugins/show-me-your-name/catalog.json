@@ -12,5 +12,6 @@
     "chat",
     "appearance"
   ],
-  "owner_id": "0x6D63736D796E616D"
+  "owner_id": "0x6D63736D796E616D",
+  "changelog": "Now also runs in MaiCord on Linux."
 }

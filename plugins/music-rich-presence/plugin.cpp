@@ -149,6 +149,6 @@ static void start(Ctx& ctx) {
 }
 
 MC_HOOKS(on_timer, on_setting);
-MC_PLUGIN(.owner = 0x6D63'6C61'7374'666D, .name = "Music Rich Presence", .version = "1.0.0",
+MC_PLUGIN(.owner = 0x6D63'6C61'7374'666D, .name = "Music Rich Presence", .version = "1.0.1",
           .summary = "Shows what you are playing on Last.fm as your activity.", .permissions = MC_PERM_ACT_PRESENCE,
           .network = {"ws.audioscrobbler.com"}, .start = start);

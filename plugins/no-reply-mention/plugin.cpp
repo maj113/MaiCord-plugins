@@ -15,5 +15,5 @@ static void pre_send(Ctx& ctx, Draft& draft) {
 }
 
 MC_HOOKS(pre_send);
-MC_PLUGIN(.owner = 0x6D63'6E6F'7265'706C, .name = "No Reply Mention", .version = "1.0.0",
+MC_PLUGIN(.owner = 0x6D63'6E6F'7265'706C, .name = "No Reply Mention", .version = "1.0.1",
           .summary = "Turns off the ping of your replies.");

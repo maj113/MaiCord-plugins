@@ -11,5 +11,6 @@
     "fun",
     "utility"
   ],
-  "owner_id": "0x6D63637573727063"
+  "owner_id": "0x6D63637573727063",
+  "changelog": "Now also runs in MaiCord on Linux."
 }

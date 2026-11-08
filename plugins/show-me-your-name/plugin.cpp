@@ -20,5 +20,5 @@ static void decorate(Ctx& ctx, const User& user, Decoration& d) {
 
 // Message authors and member rows; profiles already show the username.
 MC_HOOKS(mc::filter<decorate, (1u << MC_USER_MESSAGE_AUTHOR) | (1u << MC_USER_MEMBER_ROW)>);
-MC_PLUGIN(.owner = 0x6D63'736D'796E'616D, .name = "Show Me Your Name", .version = "1.0.0",
+MC_PLUGIN(.owner = 0x6D63'736D'796E'616D, .name = "Show Me Your Name", .version = "1.0.1",
           .summary = "Shows usernames beside display names and nicknames.");

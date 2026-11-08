@@ -34,5 +34,5 @@ MC_MENU(tineye, menu::image, "TinEye", .parent = engines, .visible = tineye_show
     search(ctx, target, "https://www.tineye.com/search?url=");
 }
 
-MC_PLUGIN(.owner = 0x6D63'7269'6D67'7372, .name = "Reverse Image Search", .version = "1.0.0",
+MC_PLUGIN(.owner = 0x6D63'7269'6D67'7372, .name = "Reverse Image Search", .version = "1.0.1",
           .summary = "Searches the web for an image from its context menu.");

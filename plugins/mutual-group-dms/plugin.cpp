@@ -57,6 +57,6 @@ static void opened(Ctx& ctx, const NodeAction& action) {
 }
 
 MC_HOOKS(decorate, opened);
-MC_PLUGIN(.owner = 0x6D63'6D75'7467'646D, .name = "Mutual Group DMs", .version = "1.0.0",
+MC_PLUGIN(.owner = 0x6D63'6D75'7467'646D, .name = "Mutual Group DMs", .version = "1.0.1",
           .summary = "Lists the group DMs you share with someone on their profile.",
           .permissions = MC_PERM_READ_MESSAGES);

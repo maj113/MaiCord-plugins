@@ -70,6 +70,6 @@ static void start(Ctx& ctx) {
 }
 
 MC_HOOKS(on_timer, on_setting);
-MC_PLUGIN(.owner = 0x6D63'6375'7372'7063, .name = "Custom RPC", .version = "1.0.0",
+MC_PLUGIN(.owner = 0x6D63'6375'7372'7063, .name = "Custom RPC", .version = "1.0.1",
           .summary = "Sets a custom activity from text you write.", .permissions = MC_PERM_ACT_PRESENCE,
           .start = start);

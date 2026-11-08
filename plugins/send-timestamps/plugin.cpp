@@ -197,5 +197,5 @@ MC_BUTTON(stamp, surface::chat_bar, "Insert timestamp", "lucide/calendar") {
     ask(ctx, now, ctx.settings().format);
 }
 
-MC_PLUGIN(.owner = 0x6D63'736E'6474'696D, .name = "Send Timestamps", .version = "1.0.0",
+MC_PLUGIN(.owner = 0x6D63'736E'6474'696D, .name = "Send Timestamps", .version = "1.0.1",
           .summary = "Inserts a Discord timestamp from a date and time you type.", .permissions = MC_PERM_COMPOSER);

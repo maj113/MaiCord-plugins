@@ -38,5 +38,5 @@ static void start(Ctx& ctx) {
 }
 
 MC_HOOKS(pre_send);
-MC_PLUGIN(.owner = 0x6D63'736C'6E74'6F67, .name = "Silent Toggle", .version = "1.0.0",
+MC_PLUGIN(.owner = 0x6D63'736C'6E74'6F67, .name = "Silent Toggle", .version = "1.0.1",
           .summary = "Sends your messages as @silent while it's on.", .start = start);

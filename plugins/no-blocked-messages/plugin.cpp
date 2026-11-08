@@ -18,5 +18,5 @@ static void changed(Ctx& ctx, const SettingChanged&) {
 }
 
 MC_HOOKS(decorate, changed);
-MC_PLUGIN(.owner = 0x6D63'6E6F'626C'6B64, .name = "No Blocked Messages", .version = "1.0.0",
+MC_PLUGIN(.owner = 0x6D63'6E6F'626C'6B64, .name = "No Blocked Messages", .version = "1.0.1",
           .summary = "Hides the messages of users you blocked.");

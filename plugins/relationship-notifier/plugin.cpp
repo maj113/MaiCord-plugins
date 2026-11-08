@@ -59,5 +59,5 @@ static void on_channel(Ctx& ctx, const ev::ChannelDelete& e) {
 }
 
 MC_HOOKS(on_relationship, on_server, on_channel);
-MC_PLUGIN(.owner = 0x6D63'7265'6C6E'6F74, .name = "Relationship Notifier", .version = "1.0.0",
+MC_PLUGIN(.owner = 0x6D63'7265'6C6E'6F74, .name = "Relationship Notifier", .version = "1.0.1",
           .summary = "Tells you when a friend removes you or you lose a server or group chat.");

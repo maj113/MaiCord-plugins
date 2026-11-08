@@ -68,5 +68,5 @@ static void changed(Ctx& ctx, const SettingChanged&) {
 }
 
 MC_HOOKS(decorate, voiced, opened, changed);
-MC_PLUGIN(.owner = 0x6D63'766F'6963'6575, .name = "User Voice Show", .version = "1.0.0",
+MC_PLUGIN(.owner = 0x6D63'766F'6963'6575, .name = "User Voice Show", .version = "1.0.1",
           .summary = "Shows which voice channel a user is in.", .permissions = MC_PERM_READ_ACTIVITY);

@@ -11,5 +11,6 @@
     "privacy",
     "appearance"
   ],
-  "owner_id": "0x6D63626C726E7366"
+  "owner_id": "0x6D63626C726E7366",
+  "changelog": "Now also runs in MaiCord on Linux."
 }

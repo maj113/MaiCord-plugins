@@ -11,5 +11,6 @@
     "notifications",
     "utility"
   ],
-  "owner_id": "0x6D6372656C6E6F74"
+  "owner_id": "0x6D6372656C6E6F74",
+  "changelog": "Now also runs in MaiCord on Linux."
 }
