@@ -4,7 +4,7 @@
     python -B scripts/build_linux_plugins.py --maicord <MaiCord checkout> --source build/index-source.json site
 
 Runs after scripts/build_catalog.py, on a Linux runner with clang and ld.lld (the Linux job installs MaiCord's pinned
-LLVM major: tools/install_linux_toolchain.sh; MAICORD_LLVM_BIN or --llvm-bin names its bin directory). For each plugin
+LLVM release: tools/install_linux_toolchain.sh; MAICORD_LLVM_BIN or --llvm-bin names its bin directory). For each plugin
 item of the index source it
   1. builds plugins/<slug>/plugin.cpp with MaiCord's own tool, as `maicord-plugin build --target linux` does (the flags
      are cmake/test_support.cmake's maicord_plugin() on Linux: freestanding, no libc, one export), twice from different

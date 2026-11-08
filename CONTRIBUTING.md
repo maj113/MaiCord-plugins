@@ -395,7 +395,7 @@ interface 4, which is why neither file replaces the other.
 (`index-3.json`, `index-full.json` and `index.json` list it as the version's
 `file`) and an x86-64 shared object (`files/<sha256>.so`) that
 `scripts/build_linux_plugins.py` builds from the same `plugin.cpp` on the Linux
-runner, with MaiCord's `maicord-plugin` tool on its pinned LLVM major (the same
+runner, with MaiCord's `maicord-plugin` tool on its pinned LLVM release (the same
 freestanding recipe: no libc, one export, `-fPIC -fvisibility=hidden`; it is
 built twice to show that a rebuild is the same file). The tool's checks are the
 client's ELF loader's, and any finding fails the build; the descriptor must
@@ -410,7 +410,10 @@ shared object (`build_catalog.py` verifies that index on the Windows runner and
 carries the files), a source change since its commit fails the build (bump the
 version), and a rebuild that only differs through toolchain drift warns and
 keeps the published file. A version published before this existed has no
-shared object and stays Windows-only until its plugin is next released.
+shared object: the Linux job builds one for it, and when the descriptor differs
+from the published DLL's (a DLL built against an older SDK names a lower API
+level) the build fails and the sign job refuses the plugin. Release it again:
+bump the version, so the DLL and the shared object are built together.
 
 To try it yourself (Linux, or WSL, with clang and ld.lld on `PATH` or in
 `MAICORD_LLVM_BIN`), after `build_catalog.py` made the site:

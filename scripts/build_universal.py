@@ -18,8 +18,8 @@ reader_source, reader 4), which the Linux client reads.
 The toolchain: MAICORD_GLSL_TOOLCHAIN names a directory with dxc and mc_shadertool; without it, on Linux, the pinned
 one is fetched and built into ~/.cache/maicord-toolchain (MAICORD_TOOLCHAIN_CACHE) on first use, which needs git, cmake,
 a C++ compiler and network access. MaiCord's checkout needs (sparse is enough) include/maicord/sdk, include/maicord/sys
-and tools/ (maicord-plugin, glsl_translate.py, fetch_linux_shader_toolchain.py, linux_shader_toolchain.json, shadertool,
-release). Nothing here needs a signing key.
+and tools/ (maicord-plugin, glsl_translate.py and the optimal_deflate.py it imports, fetch_linux_shader_toolchain.py,
+linux_shader_toolchain.json, shadertool, release). Nothing here needs a signing key.
 """
 
 from __future__ import annotations

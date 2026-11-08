@@ -22,7 +22,7 @@ name: Publish the catalog
 # declares against the published version, the DLL size, the effect cost class
 # and the previews, which it uploads as an artifact. The Linux job then builds each
 # plugin again as an x86-64 shared object (MaiCord's maicord-plugin tool on its pinned
-# LLVM major, checked as the client's ELF loader checks it, its descriptor compared
+# LLVM release, checked as the client's ELF loader checks it, its descriptor compared
 # with the DLL's) and adds each effect's interface 4 package (MaiCord's maicord-plugin
 # effect build --glsl, on its pinned DXC and SPIRV-Cross, cached by their pins),
 # checked against the DXBC package; the sign job refuses an effect or plugin without
@@ -176,7 +176,8 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      # The SDK headers the shaders include, the effect tool and the shader toolchain's pin and source.
+      # The SDK headers the shaders and plugins include, the plugin and effect tool, the LLVM pin and its resolver, and
+      # the shader toolchain's pin and source.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: maj113/MaiCord
@@ -188,7 +189,10 @@ jobs:
             /tools/maicord-plugin/
             /tools/release/
             /tools/install_linux_toolchain.sh
+            /tools/resolve_llvm_toolchain.sh
+            /tools/llvm_toolchain.json
             /tools/glsl_translate.py
+            /tools/optimal_deflate.py
             /tools/fetch_linux_shader_toolchain.py
             /tools/linux_shader_toolchain.json
             /tools/shadertool/
@@ -203,22 +207,23 @@ jobs:
         with:
           name: catalog-build
 
-      # DXC (a release tarball) and SPIRV-Cross (built from its pinned tag) with mc_shadertool: fetched by
-      # tools/fetch_linux_shader_toolchain.py into this directory, named by the pins it holds.
+      # DXC (a release tarball) and SPIRV-Cross (built from its pinned tag) with mc_shadertool, fetched by
+      # tools/fetch_linux_shader_toolchain.py, and the pinned LLVM release (below) all live in this directory, each named
+      # by the pins it holds; the key follows every pin.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/maicord-toolchain
-          key: shader-toolchain-${{ runner.os }}-${{ hashFiles('maicord/tools/linux_shader_toolchain.json', 'maicord/tools/shadertool/mc_shadertool.cpp') }}
+          key: linux-toolchain-${{ runner.os }}-${{ hashFiles('maicord/tools/llvm_toolchain.json', 'maicord/tools/linux_shader_toolchain.json', 'maicord/tools/shadertool/mc_shadertool.cpp') }}
 
-      # Every plugin built again for Linux with MaiCord's own tool on its pinned LLVM major (clang and ld.lld from
-      # apt.llvm.org, installed by MaiCord's tools/install_linux_toolchain.sh, which holds the pin and prints the
-      # resolved version), checked as the client's ELF loader checks it, and named as the "linux" file of the version.
+      # Every plugin built again for Linux with MaiCord's own tool on its pinned LLVM (the Linux asset of the llvm-pe
+      # release tools/llvm_toolchain.json names, fetched into ~/.cache/maicord-toolchain/<tag> by
+      # tools/resolve_llvm_toolchain.sh, which MaiCord's tools/install_linux_toolchain.sh runs; it prints the versions
+      # and puts the bin directory in MAICORD_LLVM_BIN for the next steps), checked as the client's ELF loader checks
+      # it, and named as the "linux" file of the version.
       - name: Install the LLVM toolchain
         run: bash maicord/tools/install_linux_toolchain.sh
 
       - name: Build the plugins for Linux
-        env:
-          MAICORD_LLVM_BIN: /usr/lib/llvm-23/bin
         run: |
           python -B catalog/scripts/build_linux_plugins.py --maicord maicord --source build/index-source.json \
             --summary build/linux-summary.md site
