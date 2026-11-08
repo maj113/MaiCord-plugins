@@ -347,7 +347,9 @@ inline bool run(const Prog& p, Str text, u32 from, i32 (&caps)[20], Back* stack,
             ++at;
         return at;
     };
-    for (;;) {
+    // The hot loop: it runs at every position of every message, and its speed swung by 7% with where the code
+    // around it happened to end up; on a 64-byte boundary it no longer depends on that.
+    [[clang::code_align(64)]] for (;;) {
         if (++steps > kStepsMax)
             return false;
         const Inst& in = p.code[pc];
@@ -562,5 +564,5 @@ static void changed(Ctx& ctx, const SettingChanged& change) {
 }
 
 MC_HOOKS(pre_send, pre_edit, changed);
-MC_PLUGIN(.owner = 0x6D63'7478'7472'6570, .name = "Text Replace", .version = "1.0.0",
+MC_PLUGIN(.owner = 0x6D63'7478'7472'6570, .name = "Text Replace", .version = "1.0.1",
           .summary = "Rewrites what you send with your own find-and-replace rules.", .api_level = 1);

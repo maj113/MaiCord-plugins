@@ -11,5 +11,6 @@
     "chat",
     "utility"
   ],
-  "owner_id": "0x6D63747874726570"
+  "owner_id": "0x6D63747874726570",
+  "changelog": "Rewrites long messages a little faster."
 }
